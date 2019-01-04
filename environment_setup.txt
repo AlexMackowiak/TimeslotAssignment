@@ -1,0 +1,16 @@
+# Before working on this repository, you probably want to set up a local python virtual environment:
+# 1. Run the "venv" python module to create the ".venv" virtual environment directory
+# 2. Enter the virtual environment with the "activate" bash file
+# 3. Ensure your virtual environment pip version is up to date to locate the necessary packages
+# 4. Have pip collect all the required packages for the virtual 
+python3 -m venv .venv
+source .venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
+
+# To exit the virtual environment and go back to your default python installation and installed packages
+deactivate
+
+# If you add a required package to this repository, save it for others with the following:
+pip freeze > requirements.txt
+git add requirements.txt, commit, etc.
