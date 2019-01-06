@@ -6,54 +6,63 @@ DOODLE_PREFERRED_TIME = 'OK'
 DOODLE_NOT_PREFERRED_TIME = '(OK)'
 DOODLE_IMPOSSIBLE_TIME = ''
 
-class ModPreference:
-    def __init__(self, net_id, time_preferences, max_num_sections):
+class ModAssignedToTimeVariableWrapper:
+    def __init__(self, net_id, time_index, is_preferred_time, linear_programming_var):
         """
             Args:
-                net_id: String for the netID of the moderator with these preferences
-                time_preferences: String array with an entry for each time slot in the Doodle poll
-                                    'OK' represents a preferred time
-                                    '(OK)' represents a time that is not preferred but would work
-                                    '' represents a time that will not work for the moderator
-                max_num_sections: Integer for the maximum number of sections this moderator will take
+                net_id: String for the netID of the moderator this LP variable represents
+                time_index: Integer for the time slot this LP variable represents
+                is_preferred_time: True if this moderator marked this time as preferred
+                linear_programming_var: The OR-Tools IntVar object being wrapped with extra data
         """
         self.net_id = net_id
-        self.time_preferences = time_preferences
-        self.max_num_sections = max_num_sections
+        self.time_index = time_index
+        self.is_preferred_time = is_preferred_time
+        self.variable = linear_programming_var
 
-def getModVarNameFromIndices(mod_index, time_index):
-    return 'mod_' + str(mod_index) + ':time_' + str(time_index)
+    def isTimeAssignedToMod(self):
+        """
+            The output of this function should only be used after the linear programming solver
+                has been run
 
-def getIndicesFromModVar(solverVar):
-    variable_name = solverVar.name()
-    colon_string_index = variable_name.find(':')
-
-    mod_index = int(variable_name[len('mod_'):colon_string_index])
-    time_index = int(variable_name[(colon_string_index + len(':time_')):])
-    return mod_index, time_index
+            Returns:
+                True if this moderator was assigned this time by the LP solver, false otherwise
+        """
+        return (self.variable.solution_value() != 0)
 
 def main():
     mod_doodle_poll_csv_path = 'moderator_preferences_original.csv'
-    mod_preferences = readModeratorPreferences(mod_doodle_poll_csv_path)
+    (mod_net_ids, mod_time_preferences, max_sections_per_mod) = readModeratorPreferences(mod_doodle_poll_csv_path)
 
-    mod_solver = pywraplp.Solver('ModeratorAssigner',
-                                 pywraplp.Solver.CBC_MIXED_INTEGER_PROGRAMMING)
+    mod_solver = pywraplp.Solver('ModeratorAssigner', pywraplp.Solver.CBC_MIXED_INTEGER_PROGRAMMING)
 
     # Set up the variables for the problem
     # A moderator paired with one section time is considered a variable, this is done for every mod and non-impossible time
     # Each variable may only have either 0 or 1 as its value, a 1 value indicates that mod has that section time
     # Impossible times are represented as None for ease of use so the indices remain the same
-    num_moderators = len(mod_preferences)
-    num_section_times = len(mod_preferences[0].time_preferences)
-    mod_variables = [[mod_solver.IntVar(0, 1, getModVarNameFromIndices(mod_index, time_index)) 
-                      if mod_preferences[mod_index].time_preferences[time_index] != DOODLE_IMPOSSIBLE_TIME
-                      else None
-                      for time_index in range(num_section_times)] 
-                     for mod_index in range(num_moderators)]
+    num_moderators = len(mod_net_ids)
+    num_section_times = len(mod_time_preferences[0])
 
-    addSectionsPerModConstraint(mod_solver, mod_variables, mod_preferences, num_section_times, num_moderators)
-    addModsPerSectionTimeConstraint(mod_solver, mod_variables, num_section_times, num_moderators)
-    addNotPreferredTimeFunction(mod_solver, mod_variables, mod_preferences, num_section_times, num_moderators)
+    variables_for_each_mod = [[] for _ in range(num_moderators)]
+    variables_for_each_time = [[] for _ in range(num_section_times)]
+    # The two lists above represent the same LP variables, but a different way of iterating over them (row vs. column order)
+
+    for mod_index in range(num_moderators):
+        for time_index in range(num_section_times):
+            mod_preference_for_time = mod_time_preferences[mod_index][time_index]
+
+            if mod_preference_for_time != DOODLE_IMPOSSIBLE_TIME:
+                is_preferred_time = (mod_preference_for_time == DOODLE_PREFERRED_TIME)
+                linear_programming_var = mod_solver.IntVar(0, 1, ('mod_' + str(mod_index) + ':time_' + str(time_index)))
+                variable_wrapper = ModAssignedToTimeVariableWrapper(mod_net_ids[mod_index], time_index, 
+                                                                    is_preferred_time, linear_programming_var)
+
+                variables_for_each_mod[mod_index].append(variable_wrapper)
+                variables_for_each_time[time_index].append(variable_wrapper)
+
+    addSectionsPerModConstraint(mod_solver, variables_for_each_mod, max_sections_per_mod)
+    addModsPerSectionTimeConstraint(mod_solver, variables_for_each_time)
+    addNotPreferredTimeFunction(mod_solver, variables_for_each_mod)
 
     # Kick off the solver, and verify an optimal solution exists
     result_status = mod_solver.Solve()
@@ -62,18 +71,39 @@ def main():
     num_mods_per_section_time = [0] * num_section_times
 
     print('Minimum number of not preferred times selected = %d' % mod_solver.Objective().Value())
-    for mod_index in range(num_moderators):
-        for time_index in range(num_section_times):
-            mod_section_time_variable = mod_variables[mod_index][time_index]
-            if mod_section_time_variable is not None and mod_section_time_variable.solution_value() != 0:    
-                (mod_index, time_index) = getIndicesFromModVar(mod_section_time_variable)
-                print(mod_preferences[mod_index].net_id + ' has time ' + str(time_index))
-                num_mods_per_section_time[time_index] += 1
+    for times_that_work_for_mod in variables_for_each_mod:
+        for mod_section_time_var_wrapper in times_that_work_for_mod:
+            if mod_section_time_var_wrapper.isTimeAssignedToMod():
+               time_index_assigned = mod_section_time_var_wrapper.time_index
+               print(mod_section_time_var_wrapper.net_id + ' has time ' + str(time_index_assigned))
+               num_mods_per_section_time[time_index_assigned] += 1
 
     print(num_mods_per_section_time)
 
 def readModeratorPreferences(mod_doodle_poll_csv_path):
-    mod_preferences = []
+    """
+        Reads in the time and max sections preferences for each moderator from a csv file.
+        This function assumes a Doodle poll format that has been modified to put the max sections each moderator
+            will take at the end of their entry (TODO: put max sections preferences in a different file)
+
+        Args:
+            mod_doodle_poll_csv_path: The file path to the Doodle poll which also has max section information
+
+        Returns:
+            mod_net_ids: List of Strings for each moderator's net ID
+            mod_time_preferences: List where each entry is all the time preferences for a moderator
+                                    time preferences are a List of Strings where for each time slot in the Doodle poll
+                                    'OK' represents a preferred time
+                                    '(OK)' represents a time that is not preferred but would work
+                                    '' represents a time that will not work for the moderator
+            max_sections_per_mod: List of Integers for the maximum number of sections each moderator will take
+
+            All of the lists returned store information for the same moderator at the same index
+            Probably should make some data container object instead... TODO
+    """
+    mod_net_ids = []
+    mod_time_preferences = []
+    max_sections_per_mod = []
 
     with open(mod_doodle_poll_csv_path, 'r+', encoding='utf-8-sig') as mod_pref_file:
         # Read in preferences file and trim to the start of the actual preference lines
@@ -84,45 +114,48 @@ def readModeratorPreferences(mod_doodle_poll_csv_path):
             net_id = mod_preference_entry[0]
             time_preferences = mod_preference_entry[1:-1]
             max_num_sections = mod_preference_entry[-1] # Assumes this is present in the same CSV file
-            mod_preferences.append(ModPreference(net_id, time_preferences, max_num_sections))
 
-    return mod_preferences
+            mod_net_ids.append(net_id)
+            mod_time_preferences.append(time_preferences)
+            max_sections_per_mod.append(max_num_sections)
+            #mod_preferences.append(ModPreferences(net_id, time_preferences, max_num_sections))
 
-def addModsPerSectionTimeConstraint(mod_solver, mod_variables, num_section_times, num_moderators):
+    return mod_net_ids, mod_time_preferences, max_sections_per_mod
+
+def addSectionsPerModConstraint(mod_solver, variables_for_each_mod, max_sections_per_mod):
+    # Add constraint for each moderator to have no more than their max sections
+    # This is currently set up so that each moderator has exactly their max sections, but can easily be changed
+    for (times_that_work_for_mod, max_sections) in zip(variables_for_each_mod, max_sections_per_mod):
+        section_times_per_mod = mod_solver.Constraint(float(max_sections), float(max_sections))
+
+        for mod_section_time_var_wrapper in times_that_work_for_mod:
+            section_times_per_mod.SetCoefficient(mod_section_time_var_wrapper.variable, 1)
+
+def addModsPerSectionTimeConstraint(mod_solver, variables_for_each_time):
     # Changing the min/max mods per section time for either a specific time index or all section times can be done here
-    MIN_MODS_PER_SECTION_TIME = [1] * num_section_times
-    MAX_MODS_PER_SECTION_TIME = [3] * num_section_times
+    min_mods_per_section_time = [1] * len(variables_for_each_time)
+    max_mods_per_section_time = [3] * len(variables_for_each_time)
 
     # Add the max and min constraint for moderators per section time
     # The sum of all moderator time variable values must be between 1 and 3 inclusive for each section
-    for time_index in range(num_section_times):
-        min_max_mods_for_section_time = mod_solver.Constraint(float(MIN_MODS_PER_SECTION_TIME[time_index]),
-                                                              float(MAX_MODS_PER_SECTION_TIME[time_index]))
-        for mod_index in range(num_moderators):
-            mod_section_time_variable = mod_variables[mod_index][time_index]
-            if mod_section_time_variable is not None:
-                min_max_mods_for_section_time.SetCoefficient(mod_section_time_variable, 1)
+    for (moderators_that_can_take_time, min_mods_for_time, max_mods_for_time) in \
+            zip(variables_for_each_time, min_mods_per_section_time, max_mods_per_section_time):
+        min_max_mods_for_section_time = mod_solver.Constraint(float(min_mods_for_time), float(max_mods_for_time))
 
-def addSectionsPerModConstraint(mod_solver, mod_variables, mod_preferences, num_section_times, num_moderators):
-    # Add constraint for each moderator to have no more than their max sections
-    # This is currently set up so that each moderator has exactly their max sections, but can easily be changed
-    for mod_index in range(num_moderators):
-        section_times_per_mod = mod_solver.Constraint(float(mod_preferences[mod_index].max_num_sections),
-                                                      float(mod_preferences[mod_index].max_num_sections))
-        for time_index in range(num_section_times):
-            mod_section_time_variable = mod_variables[mod_index][time_index]
-            if mod_section_time_variable is not None:
-                section_times_per_mod.SetCoefficient(mod_section_time_variable, 1)
+        for mod_section_time_var_wrapper in moderators_that_can_take_time:
+            min_max_mods_for_section_time.SetCoefficient(mod_section_time_var_wrapper.variable, 1)
 
-def addNotPreferredTimeFunction(mod_solver, mod_variables, mod_preferences, num_section_times, num_moderators):
+def addNotPreferredTimeFunction(mod_solver, variables_for_each_mod):
     # Set up the function to minimize the number of not preferred section times chosen for all moderators
     mod_objective_function = mod_solver.Objective()
     mod_objective_function.SetMinimization()
 
-    for mod_index in range(num_moderators):
-        for time_index in range(num_section_times):
-            if mod_preferences[mod_index].time_preferences[time_index] == DOODLE_NOT_PREFERRED_TIME:
-                mod_objective_function.SetCoefficient(mod_variables[mod_index][time_index], 1)
+    for times_that_work_for_mod in variables_for_each_mod:
+        for mod_section_time_var_wrapper in times_that_work_for_mod:
+            is_preferred_time = (mod_section_time_var_wrapper.is_preferred_time)
+
+            if not is_preferred_time:
+                mod_objective_function.SetCoefficient(mod_section_time_var_wrapper.variable, 1)
 
 if __name__ == "__main__":
     main()
