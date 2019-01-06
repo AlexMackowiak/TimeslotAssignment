@@ -123,21 +123,42 @@ def readModeratorPreferences(mod_doodle_poll_csv_path):
     return mod_net_ids, mod_time_preferences, max_sections_per_mod
 
 def addSectionsPerModConstraint(mod_solver, variables_for_each_mod, max_sections_per_mod):
-    # Add constraint for each moderator to have no more than their max sections
-    # This is currently set up so that each moderator has exactly their max sections, but can easily be changed
-    for (times_that_work_for_mod, max_sections) in zip(variables_for_each_mod, max_sections_per_mod):
-        section_times_per_mod = mod_solver.Constraint(float(max_sections), float(max_sections))
+    """
+        Adds the constraint to the LP solver that no moderator has more than their max requested number of sections
+        This is currently set up so each moderator has exactly their maximum sections so that the numbers can be
+            messed with easier when configuring (TODO: make this a config option)
+        Mathematically, this constraint is expressed as
+            (the sum of all mod/time assignment variables for a mod) <= (max sections for that mod)
 
+        Args:
+            mod_solver: The pywraplp.Solver object which will solve the linear programming assignment problem
+            variables_for_each_mod: List where each entry is a List of type ModAssignedToTimeVariableWrapper
+                                        which represents all mod/time variables for a single moderator
+            max_sections_per_mod: List of Integers, max_sections_per_mod[i] is the maximum sections the ith
+                                    moderator will take
+    """
+    for (times_that_work_for_mod, max_sections_for_this_mod) in zip(variables_for_each_mod, max_sections_per_mod):
+        section_times_per_mod = mod_solver.Constraint(float(max_sections_for_this_mod),
+                                                      float(max_sections_for_this_mod))
         for mod_section_time_var_wrapper in times_that_work_for_mod:
             section_times_per_mod.SetCoefficient(mod_section_time_var_wrapper.variable, 1)
 
 def addModsPerSectionTimeConstraint(mod_solver, variables_for_each_time):
+    """
+        Adds the constraint to the LP solver that every section time has at least one moderator, and no section time
+            has more moderators than there are rooms (currently: 1 <= mods in section time <= 3)
+        Mathematically this constraint is expressed as
+           1 <= (the sum of all mod/time assignment variables for a section time) <= 3
+
+        Args:
+            mod_solver: The pywraplp.Solver object which will solve the linear programming assignment problem
+            variables_for_each_time: List where each entry is a List of type ModAssignedToTimeVariableWrapper
+                                        which represents all mod/time variables for a single section time
+    """
     # Changing the min/max mods per section time for either a specific time index or all section times can be done here
     min_mods_per_section_time = [1] * len(variables_for_each_time)
     max_mods_per_section_time = [3] * len(variables_for_each_time)
 
-    # Add the max and min constraint for moderators per section time
-    # The sum of all moderator time variable values must be between 1 and 3 inclusive for each section
     for (moderators_that_can_take_time, min_mods_for_time, max_mods_for_time) in \
             zip(variables_for_each_time, min_mods_per_section_time, max_mods_per_section_time):
         min_max_mods_for_section_time = mod_solver.Constraint(float(min_mods_for_time), float(max_mods_for_time))
@@ -146,7 +167,16 @@ def addModsPerSectionTimeConstraint(mod_solver, variables_for_each_time):
             min_max_mods_for_section_time.SetCoefficient(mod_section_time_var_wrapper.variable, 1)
 
 def addNotPreferredTimeFunction(mod_solver, variables_for_each_mod):
-    # Set up the function to minimize the number of not preferred section times chosen for all moderators
+    """
+        Adds the function to minimize to the LP solver, mathematically this function is specified as
+            minimize f where f = (the sum of all mod/time assignment variables where the time is not preferred)
+        This means the LP solver can pick preferred times for free, but choosing not preferred times incurs a cost
+
+        Args:
+            mod_solver: The pywraplp.Solver object which will solve the linear programming assignment problem
+            variables_for_each_mod: List where each entry is a List of type ModAssignedToTimeVariableWrapper
+                                        which represents all mod/time variables for a single moderator
+    """
     mod_objective_function = mod_solver.Objective()
     mod_objective_function.SetMinimization()
 
