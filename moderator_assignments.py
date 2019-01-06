@@ -30,36 +30,20 @@ class ModAssignedToTimeVariableWrapper:
         """
         return (self.variable.solution_value() != 0)
 
-def main():
-    mod_doodle_poll_csv_path = 'moderator_preferences_original.csv'
-    (mod_net_ids, mod_time_preferences, max_sections_per_mod) = readModeratorPreferences(mod_doodle_poll_csv_path)
+def assignModerators(mod_doodle_poll_csv_path):
+    """
+        Args:
+            mod_doodle_poll_csv_path: The file path to the Doodle poll which also has max section information
 
+        Returns:
+            List of Integers, at each index is the number of moderators assigned to that section time for use in
+                assigning students to section times that have enough moderators
+    """
+    (mod_net_ids, mod_time_preferences, max_sections_per_mod) = readModeratorPreferences(mod_doodle_poll_csv_path)
     mod_solver = pywraplp.Solver('ModeratorAssigner', pywraplp.Solver.CBC_MIXED_INTEGER_PROGRAMMING)
 
-    # Set up the variables for the problem
-    # A moderator paired with one section time is considered a variable, this is done for every mod and non-impossible time
-    # Each variable may only have either 0 or 1 as its value, a 1 value indicates that mod has that section time
-    # Impossible times are represented as None for ease of use so the indices remain the same
-    num_moderators = len(mod_net_ids)
-    num_section_times = len(mod_time_preferences[0])
-
-    variables_for_each_mod = [[] for _ in range(num_moderators)]
-    variables_for_each_time = [[] for _ in range(num_section_times)]
-    # The two lists above represent the same LP variables, but a different way of iterating over them (row vs. column order)
-
-    for mod_index in range(num_moderators):
-        for time_index in range(num_section_times):
-            mod_preference_for_time = mod_time_preferences[mod_index][time_index]
-
-            if mod_preference_for_time != DOODLE_IMPOSSIBLE_TIME:
-                is_preferred_time = (mod_preference_for_time == DOODLE_PREFERRED_TIME)
-                linear_programming_var = mod_solver.IntVar(0, 1, ('mod_' + str(mod_index) + ':time_' + str(time_index)))
-                variable_wrapper = ModAssignedToTimeVariableWrapper(mod_net_ids[mod_index], time_index, 
-                                                                    is_preferred_time, linear_programming_var)
-
-                variables_for_each_mod[mod_index].append(variable_wrapper)
-                variables_for_each_time[time_index].append(variable_wrapper)
-
+    (variables_for_each_mod, variables_for_each_time) = setupLinearProgrammingVariables(mod_solver, mod_net_ids,
+                                                                                        mod_time_preferences)
     addSectionsPerModConstraint(mod_solver, variables_for_each_mod, max_sections_per_mod)
     addModsPerSectionTimeConstraint(mod_solver, variables_for_each_time)
     addNotPreferredTimeFunction(mod_solver, variables_for_each_mod)
@@ -68,7 +52,7 @@ def main():
     result_status = mod_solver.Solve()
     assert result_status == pywraplp.Solver.OPTIMAL
 
-    num_mods_per_section_time = [0] * num_section_times
+    num_mods_per_section_time = [0] * len(mod_time_preferences[0])
 
     print('Minimum number of not preferred times selected = %d' % mod_solver.Objective().Value())
     for times_that_work_for_mod in variables_for_each_mod:
@@ -78,7 +62,7 @@ def main():
                print(mod_section_time_var_wrapper.net_id + ' has time ' + str(time_index_assigned))
                num_mods_per_section_time[time_index_assigned] += 1
 
-    print(num_mods_per_section_time)
+    return num_mods_per_section_time
 
 def readModeratorPreferences(mod_doodle_poll_csv_path):
     """
@@ -118,9 +102,47 @@ def readModeratorPreferences(mod_doodle_poll_csv_path):
             mod_net_ids.append(net_id)
             mod_time_preferences.append(time_preferences)
             max_sections_per_mod.append(max_num_sections)
-            #mod_preferences.append(ModPreferences(net_id, time_preferences, max_num_sections))
 
     return mod_net_ids, mod_time_preferences, max_sections_per_mod
+
+def setupLinearProgrammingVariables(mod_solver, mod_net_ids, mod_time_preferences):
+    """
+        Initializes and wraps all the LP variables used by the LP solver
+        A moderator paired with one section time is considered a variable, this is done for every mod and section time
+            the moderator declared as non-impossible
+        Each variable may only have either 0 or 1 as its value, a solution value of 1 indicates that mod was assigned
+            that section time
+
+        Args:
+            mod_solver: The pywraplp.Solver object which will solve the linear programming assignment problem
+            mod_net_ids: List of Strings for each moderator's net ID
+            mod_time_preferences: List where each entry is all the time preferences for a moderator
+
+        Returns:
+            Two lists that represent the same LP variables, but a different order of iteration (row vs. column order)
+            variables_for_each_mod: List with all mod/time LP vars for a single moderator at an index
+            variables_for_each_time: List with all mod/time LP vars for a single section time at an index
+    """
+    num_moderators = len(mod_net_ids)
+    num_section_times = len(mod_time_preferences[0])
+
+    variables_for_each_mod = [[] for _ in range(num_moderators)]
+    variables_for_each_time = [[] for _ in range(num_section_times)]
+
+    for mod_index in range(num_moderators):
+        for time_index in range(num_section_times):
+            mod_preference_for_time = mod_time_preferences[mod_index][time_index]
+
+            if mod_preference_for_time != DOODLE_IMPOSSIBLE_TIME:
+                is_preferred_time = (mod_preference_for_time == DOODLE_PREFERRED_TIME)
+                linear_programming_var = mod_solver.IntVar(0, 1, ('mod_' + str(mod_index) + ':time_' + str(time_index)))
+                variable_wrapper = ModAssignedToTimeVariableWrapper(mod_net_ids[mod_index], time_index,
+                                                                    is_preferred_time, linear_programming_var)
+
+                variables_for_each_mod[mod_index].append(variable_wrapper)
+                variables_for_each_time[time_index].append(variable_wrapper)
+
+    return variables_for_each_mod, variables_for_each_time
 
 def addSectionsPerModConstraint(mod_solver, variables_for_each_mod, max_sections_per_mod):
     """
@@ -186,6 +208,3 @@ def addNotPreferredTimeFunction(mod_solver, variables_for_each_mod):
 
             if not is_preferred_time:
                 mod_objective_function.SetCoefficient(mod_section_time_var_wrapper.variable, 1)
-
-if __name__ == "__main__":
-    main()
