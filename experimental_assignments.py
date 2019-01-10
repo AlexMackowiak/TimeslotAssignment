@@ -106,7 +106,7 @@ def assignModeratorsAndStudents(mod_doodle_poll_csv_path, mod_max_section_csv_pa
                                 for student_index in range(num_students)
                                 if cp_variables[mod_index][student_index][time_index] != None]
 
-            if len(student_mod_vars) > 0:
+            if len(mod_student_vars) > 0:
                 ensureVarSumIsOneOfPossible(model, mod_student_vars, 
                                             [0, MIN_STUDENTS_PER_SECTION, MAX_STUDENTS_PER_SECTION])
 
@@ -124,22 +124,24 @@ def assignModeratorsAndStudents(mod_doodle_poll_csv_path, mod_max_section_csv_pa
     # Kick off the solver, and verify an optimal solution exists
     solver = cp_model.CpSolver()
     status = solver.Solve(model)
-
-    #assert status == pywraplp.Solver.OPTIMAL
+    #assert status == cp_model.OPTIMAL
     print(solver.StatusName(status))
-    """
-    num_mods_per_section_time = [0] * len(mod_time_preferences[0])
-    
-    print('Minimum number of not preferred times selected = %d' % mod_solver.Objective().Value())
-    for times_that_work_for_mod in variables_for_each_mod:
-        for mod_section_time_var_wrapper in times_that_work_for_mod:
-            if mod_section_time_var_wrapper.isTimeAssignedToPerson():
-               time_index_assigned = mod_section_time_var_wrapper.time_index
-               print(mod_section_time_var_wrapper.net_id + ' has time ' + str(time_index_assigned))
-               num_mods_per_section_time[time_index_assigned] += 1
 
-    return num_mods_per_section_time
-    """
+    for mod_index in range(num_mods):
+        for time_index in range(num_section_times):
+            students_for_mod_in_time = []
+
+            for student_index in range(num_students):
+                mod_student_time_var_wrapper = cp_variables[mod_index][student_index][time_index]
+
+                if mod_student_time_var_wrapper is not None:
+                    if solver.Value(mod_student_time_var_wrapper.variable) == 1:
+                        students_for_mod_in_time.append(mod_student_time_var_wrapper.student_net_id)
+
+            if len(students_for_mod_in_time) > 0:
+                print('Mod ' + mod_net_ids[mod_index] + ' has time ' + str(time_index) +\
+                      ' with students ' + str(students_for_mod_in_time))
+                    
 
 def setupConstraintProgrammingVariables(model, mod_net_ids, mod_time_preferences, student_net_ids, student_time_preferences):
     num_mods = len(mod_net_ids)

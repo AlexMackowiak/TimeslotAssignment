@@ -3,10 +3,13 @@ from student_assignments import assignStudents
 from experimental_assignments import assignModeratorsAndStudents
 
 if __name__ == "__main__":
-    mod_doodle_poll_csv_path = 'moderator_preferences_original.csv'
-    mod_max_sections_csv_path = 'moderator_max_sections_preferences.csv'
-    student_doodle_poll_csv_path = 'student_preferences_original_no_duplicates.csv'
+#    mod_doodle_poll_csv_path = 'moderator_preferences_original.csv'
+#    mod_max_sections_csv_path = 'moderator_max_sections_preferences.csv'
+#    student_doodle_poll_csv_path = 'student_preferences_original_no_duplicates.csv'
 
+    mod_doodle_poll_csv_path = 'test_data/small_easy_mod_preferences.csv'
+    mod_max_sections_csv_path = 'test_data/small_easy_mod_max_sections.csv'
+    student_doodle_poll_csv_path = 'test_data/small_easy_student_preferences.csv'
     assignModeratorsAndStudents(mod_doodle_poll_csv_path, mod_max_sections_csv_path,
                                 student_doodle_poll_csv_path)
 """
