@@ -23,7 +23,7 @@ def readDoodlePreferences(doodle_poll_csv_path):
     net_ids = []
     all_time_preferences = []
 
-    with open(doodle_poll_csv_path, 'r+', encoding='utf-8-sig') as pref_file:
+    with open(doodle_poll_csv_path, 'r', encoding='utf-8-sig') as pref_file:
         # Read in preferences file and trim to the start of the actual preference lines
         preference_data = list(csv.reader(pref_file))
         preference_data = preference_data[DOODLE_RESPONSE_START_LINE:]
@@ -63,10 +63,10 @@ def readModMaxSectionPreferences(max_sections_csv_path, mod_net_ids):
     for (mod_index, mod_net_id) in enumerate(mod_net_ids):
         mod_net_id_to_index_dict[mod_net_id] = mod_index
 
-    with open(max_sections_csv_path, 'r+', encoding='utf-8-sig') as max_sections_csv:
+    with open(max_sections_csv_path, 'r', encoding='utf-8-sig') as max_sections_csv:
         for entry in csv.reader(max_sections_csv):
             net_id = entry[0]
-            max_sections = entry[1]
+            max_sections = int(entry[1])
 
             if net_id not in mod_net_id_to_index_dict:
                 #all_mods_accounted_for = False
