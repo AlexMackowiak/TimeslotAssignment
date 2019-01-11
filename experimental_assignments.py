@@ -45,7 +45,7 @@ def assignModeratorsAndStudents(mod_doodle_poll_csv_path, mod_max_section_csv_pa
             for time_index in range(num_section_times):
                 if cp_variables[mod_index][student_index][time_index] is not None:
                     var_count += 1
-    print(var_count)
+    print('Mod/Student/TIme Variable count: ' + str(var_count))
  
     # Every student needs exactly one moderator at exactly one time
     # The sum of all mod/time variables for one specific student must be 1
@@ -120,6 +120,8 @@ def assignModeratorsAndStudents(mod_doodle_poll_csv_path, mod_max_section_csv_pa
                                 for student_index in range(num_students)]
 
         ensureVarSumIsOneOfPossible(model, student_time_vars, possible_student_sums)
+
+    print('Num decision variables: ' + str(ensureVarSumIsOneOfPossible.num_decision_vars))
 
     # Kick off the solver, and verify an optimal solution exists
     solver = cp_model.CpSolver()

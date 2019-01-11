@@ -59,7 +59,10 @@ def assignModeratorsAndStudents(mod_doodle_poll_csv_path, mod_max_section_csv_pa
         for time_index in range(num_section_times):
             if student_variables[student_index][time_index] is not None:
                 var_count += 1
- 
+
+    print('Num mods: ' + str(num_mods))
+    print('Num students: ' + str(num_students))
+    print('Num section times: ' + str(num_section_times))
     print('Num time variables: ' + str(var_count))
 
     # The sum of all mod/time variables for a mod over all times must be <= max sections for that mod
@@ -134,6 +137,19 @@ def assignModeratorsAndStudents(mod_doodle_poll_csv_path, mod_max_section_csv_pa
         model.Add(sum(num_sections_decision_vars) == 1)
 
     print('Num decision variables: ' + str(num_decision_vars))
+
+    not_preferred_variables = []
+    for time_index in range(num_section_times):
+        for mod_index in range(num_mods):
+            mod_time_var_wrapper = mod_variables[mod_index][time_index]
+            if mod_time_var_wrapper is not None and not mod_time_var_wrapper.is_preferred_time:
+                not_preferred_variables.append(mod_time_var_wrapper.variable)
+
+        for student_index in range(num_students):
+            student_time_var_wrapper = student_variables[student_index][time_index]
+            if student_time_var_wrapper is not None and not student_time_var_wrapper.is_preferred_time:
+                not_preferred_variables.append(student_time_var_wrapper.variable)
+    model.Minimize(sum(not_preferred_variables))
 
     # Kick off the solver, and verify an optimal solution exists
     solver = cp_model.CpSolver()
