@@ -124,8 +124,8 @@ def assignModeratorsAndStudents(mod_doodle_poll_csv_path, mod_max_section_csv_pa
     # Kick off the solver, and verify an optimal solution exists
     solver = cp_model.CpSolver()
     status = solver.Solve(model)
-    #assert status == cp_model.OPTIMAL
     print(solver.StatusName(status))
+    assert (status == cp_model.OPTIMAL or status == cp_model.FEASIBLE)
 
     for mod_index in range(num_mods):
         for time_index in range(num_section_times):
