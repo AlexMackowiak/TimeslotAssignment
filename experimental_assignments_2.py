@@ -7,7 +7,9 @@ DOODLE_IMPOSSIBLE_TIME = ''
 MIN_STUDENTS_PER_SECTION = 5
 MAX_STUDENTS_PER_SECTION = 6
 
-class PersonAssignedToTimeVariableWrapper:
+class PersonTimeVariableWrapper:
+    """ Wrapper class around a CP variable that represents an assignment of a mod/student to a time """
+
     def __init__(self, net_id, time_index, is_preferred_time, constraint_programming_var):
         """
             Args:
@@ -21,15 +23,15 @@ class PersonAssignedToTimeVariableWrapper:
         self.is_preferred_time = is_preferred_time
         self.variable = constraint_programming_var
 
-    def isTimeAssignedToPerson(self):
+    def isTimeAssignedToPerson(self, solver):
         """
             The output of this function should only be used after the linear programming solver
                 has been run
 
             Returns:
-                True if this person was assigned this time by the LP solver, false otherwise
+                True if this person was assigned this time by the CP solver, false otherwise
         """
-        return (self.variable.solution_value() != 0)
+        return (solver.Value(self.variable) != 0)
 
 def assignModeratorsAndStudents(mod_doodle_poll_csv_path, mod_max_section_csv_path, student_doodle_poll_csv_path):
     """
@@ -41,10 +43,14 @@ def assignModeratorsAndStudents(mod_doodle_poll_csv_path, mod_max_section_csv_pa
     (mod_net_ids, mod_time_preferences) = readDoodlePreferences(mod_doodle_poll_csv_path)
     max_sections_per_mod = readModMaxSectionPreferences(mod_max_section_csv_path, mod_net_ids)
     (student_net_ids, student_time_preferences) = readDoodlePreferences(student_doodle_poll_csv_path)
+    assert len(mod_time_preferences[0]) == len(student_time_preferences[0])
 
     model = cp_model.CpModel()
-    (mod_variables, student_variables) = setupConstraintProgrammingVariables(model, mod_net_ids, mod_time_preferences, 
-                                                                             student_net_ids, student_time_preferences)
+    mod_time_variables = setupConstraintProgrammingVariables(model, mod_net_ids,
+                                                             mod_time_preferences, True)
+    student_time_variables = setupConstraintProgrammingVariables(model, student_net_ids,
+                                                                 student_time_preferences, False)
+
     var_count = 0
     num_mods = len(mod_net_ids)
     num_students = len(student_net_ids)
@@ -52,53 +58,189 @@ def assignModeratorsAndStudents(mod_doodle_poll_csv_path, mod_max_section_csv_pa
 
     for mod_index in range(num_mods):
         for time_index in range(num_section_times):
-            if mod_variables[mod_index][time_index] is not None:
+            if mod_time_variables[mod_index][time_index] is not None:
                 var_count += 1
 
     for student_index in range(num_students):
         for time_index in range(num_section_times):
-            if student_variables[student_index][time_index] is not None:
+            if student_time_variables[student_index][time_index] is not None:
                 var_count += 1
 
     print('Num mods: ' + str(num_mods))
     print('Num students: ' + str(num_students))
     print('Num section times: ' + str(num_section_times))
-    print('Num time variables: ' + str(var_count))
+    print('Num person/time variables: ' + str(var_count))
 
-    # The sum of all mod/time variables for a mod over all times must be <= max sections for that mod
+    addMaxSectionsPerModConstraint(model, mod_time_variables, max_sections_per_mod)
+    addMaxSectionsPerSectionTimeConstraint(model, mod_time_variables)
+    addSectionsPerStudentConstraint(model, student_time_variables)
+    addStudentsPerSectionTimeConstraint(model, mod_time_variables, student_time_variables)
+    addFunctionToMinimize(model, mod_time_variables, student_time_variables)
+
+    # Kick off the solver, and verify an optimal solution exists
+    solver = cp_model.CpSolver()
+    status = solver.Solve(model)
+    print(solver.StatusName(status))
+    assert (status == cp_model.OPTIMAL) or (status == cp_model.FEASIBLE)
+
+    for time_index in range(num_section_times):
+        mods_in_time = []
+        for mod_index in range(num_mods):
+            mod_time_var_wrapper = mod_time_variables[mod_index][time_index]
+            if mod_time_var_wrapper is not None and mod_time_var_wrapper.isTimeAssignedToPerson(solver):
+                mods_in_time.append(mod_time_var_wrapper.net_id)
+
+        students_in_time = []
+        for student_index in range(num_students):
+            student_time_var_wrapper = student_time_variables[student_index][time_index]
+            if student_time_var_wrapper is not None and student_time_var_wrapper.isTimeAssignedToPerson(solver):
+                students_in_time.append(student_time_var_wrapper.net_id)
+
+        print('Time ' + str(time_index) + ': ' + str(mods_in_time) + ' ' + str(students_in_time))
+
+def setupConstraintProgrammingVariables(model, net_ids, time_preferences, is_mod_data):
+    """
+        Creates the constraint programming variables for the model of the moderator/student assignment problem
+
+        Args:
+            model: The CpModel object that represents the constraints of the problem
+            net_ids: List of Strings for each person's net ID
+            time_preferences: List where each entry is all the time preferences for one person
+    """
+    num_people = len(net_ids)
+    num_section_times = len(time_preferences[0])
+    person_time_variables = []
+
+    for person_index in range(num_people):
+        person_time_variables.append([])
+
+        for time_index in range(num_section_times):
+            preference_for_time = time_preferences[person_index][time_index]
+
+            if preference_for_time != DOODLE_IMPOSSIBLE_TIME:
+                is_preferred_time = (preference_for_time == DOODLE_PREFERRED_TIME)
+                cp_var_prefix = 'mod' if is_mod_data else 'student'
+                cp_var_name = (cp_var_prefix + str(person_index) + ':time_' + str(time_index))
+
+                constraint_programming_var = model.NewIntVar(0, 1, cp_var_name)
+                variable_wrapper = PersonTimeVariableWrapper(net_ids[person_index], time_index,
+                                                             is_preferred_time, constraint_programming_var)
+
+                person_time_variables[person_index].append(variable_wrapper)
+            else:
+                person_time_variables[person_index].append(None)
+
+    return person_time_variables
+
+def addMaxSectionsPerModConstraint(model, mod_time_variables, max_sections_per_mod):
+    """
+        Adds the constraint that the total number of section times a mod is assigned must be
+            less than or equal to their preferred maximum number of sections
+
+        Args:
+            model: The CpModel object that represents the constraints of the problem
+            mod_time_variables: 2D List of PersonTimeVariableWrapper, if [mod_index][time_index]
+                                    is None then that time is impossible for that mod
+            max_sections_per_mod: List of Integer, each entry is the max sections for that mod_index
+    """
+    num_mods = len(mod_time_variables)
+    num_section_times = len(mod_time_variables[0])
+
     for mod_index in range(num_mods):
-        model.Add(sum([mod_variables[mod_index][time_index].variable
-                       for time_index in range(num_section_times)
-                       if mod_variables[mod_index][time_index] is not None]) <= max_sections_per_mod[mod_index])
+        all_time_vars_for_mod = sum([mod_time_variables[mod_index][time_index].variable
+                                     for time_index in range(num_section_times)
+                                     if mod_time_variables[mod_index][time_index] is not None])
 
-    # The sum of all mod/time variables for a time over all mods must be <= num rooms at that time
-    # Assumes that there are always 3 rooms for now
+        model.Add(all_time_vars_for_mod <= max_sections_per_mod[mod_index])
+
+def addMaxSectionsPerSectionTimeConstraint(model, mod_time_variables):
+    """
+        Adds the constraint that the number of moderators assigned to a section time must be
+            less than or equal to the maximum sections that can happen at that time. This is
+            usually bounded by the number of rooms available (assumed to be 3 for now)
+
+        Args:
+            model: The CpModel object that represents the constraints of the problem
+            mod_time_variables: 2D List of PersonTimeVariableWrapper, if [mod_index][time_index]
+                                    is None then that time is impossible for that mod
+    """
+    num_mods = len(mod_time_variables)
+    num_section_times = len(mod_time_variables[0])
+    max_sections_per_time = [3] * num_section_times
+
     for time_index in range(num_section_times):
-        model.Add(sum([mod_variables[mod_index][time_index].variable
-                       for mod_index in range(num_mods)
-                       if mod_variables[mod_index][time_index] is not None]) <= 3)
+        all_mod_vars_for_time = sum([mod_time_variables[mod_index][time_index].variable
+                                     for mod_index in range(num_mods)
+                                     if mod_time_variables[mod_index][time_index] is not None])
 
-    # The sum of all student/time variables for a student over all times must be exactly 1
+        model.Add(all_mod_vars_for_time <= max_sections_per_time[time_index])
+
+def addSectionsPerStudentConstraint(model, student_time_variables):
+    """
+        Adds the constraint that the number of sections assigned to a student must be exactly 1
+
+        Args:
+            model: The CpModel object that represents the constraints of the problem
+            student_time_variables: 2D List of PersonTimeVariableWrapper,
+                                        if [student_index][time_index] is None then
+                                        that time is impossible for that student
+    """
+    num_students = len(student_time_variables)
+    num_section_times = len(student_time_variables[0])
+
     for student_index in range(num_students):
-        model.Add(sum([student_variables[student_index][time_index].variable
-                       for time_index in range(num_section_times)
-                       if student_variables[student_index][time_index] is not None]) == 1)
-    
-    # The sum of all student/time variables for a time over all students must be a function of
-    #  the number of mods assigned to that time (this is where things get non-linear and complicated)
-    num_decision_vars = 0
-    for time_index in range(num_section_times):
-        max_sections_for_time = 3
+        all_student_vars_for_time = sum([student_time_variables[student_index][time_index].variable
+                                         for time_index in range(num_section_times)
+                                         if student_time_variables[student_index][time_index] is not None])
 
-        mods_in_time = [mod_variables[mod_index][time_index].variable
+        model.Add(all_student_vars_for_time == 1)
+
+def addStudentsPerSectionTimeConstraint(model, mod_time_variables, student_time_variables):
+    """
+        This is where things get complicated and why linear programming cannot solve the system as a whole
+        A little about constraint programming: It's an NP hard problem, so on some level it is just trying
+        every possible solution
+
+        Consider the mod and student vars in one specific section time, and call the current solution
+        being tried curr_sol, this function does 3 things:
+        1. If sum(mod_vars) in curr_sol = X then it forces sum(student_vars) in curr_sol to be Y or Z
+            where Y or Z is an appropriate student count for the number of mods
+            (i.e. 1 mod -> (5 or 6 students), 2 mods -> (10, 11, or 12 students))
+
+        2. Bidirectional implication
+           if sum(student_vars) in curr_sol is Y or Z it forces sum(mod_vars) in curr_sol to be X
+
+        3. Adds the constraint that one of these paths must be taken, that is it will not consider
+            solutions that do not match either of the above criteria
+
+        This is repeated for every time index, and adds ~14 more variables to the system per section time
+
+        Args:
+            model: The CpModel object that represents the constraints of the problem
+            mod_time_variables: 2D List of PersonTimeVariableWrapper, if [mod_index][time_index]
+                                    is None then that time is impossible for that mod
+            student_time_variables: 2D List of PersonTimeVariableWrapper,
+                                        if [student_index][time_index] is None then
+                                        that time is impossible for that student
+    """
+    num_mods = len(mod_time_variables)
+    num_students = len(student_time_variables)
+    num_section_times = len(mod_time_variables[0])
+    num_decision_vars = 0
+    max_sections_for_times = [3] * num_section_times
+
+    for time_index in range(num_section_times):
+        max_sections_for_time = max_sections_for_times[time_index]
+
+        mods_in_time = [mod_time_variables[mod_index][time_index].variable
                             for mod_index in range(num_mods)
-                            if mod_variables[mod_index][time_index] is not None]
-        students_in_time = [student_variables[student_index][time_index].variable
+                            if mod_time_variables[mod_index][time_index] is not None]
+        students_in_time = [student_time_variables[student_index][time_index].variable
                             for student_index in range(num_students)
-                            if student_variables[student_index][time_index] is not None]
+                            if student_time_variables[student_index][time_index] is not None]
 
         if (len(mods_in_time) == 0) or (len(students_in_time) == 0):
-            continue
+            continue # This time index will never have a section
 
         # Need to create decision variables for the possible number of mods in this time beforehand
         num_sections_decision_vars = []
@@ -138,81 +280,33 @@ def assignModeratorsAndStudents(mod_doodle_poll_csv_path, mod_max_section_csv_pa
 
     print('Num decision variables: ' + str(num_decision_vars))
 
+def addFunctionToMinimize(model, mod_time_variables, student_time_variables):
+    """
+        Adds the objective function to minimize to the model
+        This is currently just a basic implementation weighting all not preferred times the same
+
+        Args:
+            model: The CpModel object that represents the constraints of the problem
+            mod_time_variables: 2D List of PersonTimeVariableWrapper, if [mod_index][time_index]
+                                    is None then that time is impossible for that mod
+            student_time_variables: 2D List of PersonTimeVariableWrapper,
+                                        if [student_index][time_index] is None then
+                                        that time is impossible for that student
+    """
+    num_mods = len(mod_time_variables)
+    num_students = len(student_time_variables)
+    num_section_times = len(mod_time_variables[0])
     not_preferred_variables = []
+
     for time_index in range(num_section_times):
         for mod_index in range(num_mods):
-            mod_time_var_wrapper = mod_variables[mod_index][time_index]
+            mod_time_var_wrapper = mod_time_variables[mod_index][time_index]
             if mod_time_var_wrapper is not None and not mod_time_var_wrapper.is_preferred_time:
                 not_preferred_variables.append(mod_time_var_wrapper.variable)
 
         for student_index in range(num_students):
-            student_time_var_wrapper = student_variables[student_index][time_index]
+            student_time_var_wrapper = student_time_variables[student_index][time_index]
             if student_time_var_wrapper is not None and not student_time_var_wrapper.is_preferred_time:
                 not_preferred_variables.append(student_time_var_wrapper.variable)
+
     model.Minimize(sum(not_preferred_variables))
-
-    # Kick off the solver, and verify an optimal solution exists
-    solver = cp_model.CpSolver()
-    status = solver.Solve(model)
-    print(solver.StatusName(status))
-    assert (status == cp_model.OPTIMAL or status == cp_model.FEASIBLE)
-
-    for time_index in range(num_section_times):
-        mods_in_time = []
-        for mod_index in range(num_mods):
-            mod_time_var_wrapper = mod_variables[mod_index][time_index]
-            if mod_time_var_wrapper is not None and solver.Value(mod_time_var_wrapper.variable) == 1:
-                mods_in_time.append(mod_time_var_wrapper.net_id)
-
-        students_in_time = []
-        for student_index in range(num_students):
-            student_time_var_wrapper = student_variables[student_index][time_index]
-            if student_time_var_wrapper is not None and solver.Value(student_time_var_wrapper.variable) == 1:
-                students_in_time.append(student_time_var_wrapper.net_id)
-
-        print('Time ' + str(time_index) + ': ' + str(mods_in_time) + ' ' + str(students_in_time))
-
-def setupConstraintProgrammingVariables(model, mod_net_ids, mod_time_preferences, student_net_ids, student_time_preferences):
-    assert len(mod_time_preferences[0]) == len(student_time_preferences[0])
-
-    mod_variables = []
-    student_variables = []
-    num_mods = len(mod_net_ids)
-    num_students = len(student_net_ids)
-    num_section_times = len(mod_time_preferences[0])    
-    
-    for mod_index in range(num_mods):
-        mod_variables.append([])
-
-        for time_index in range(num_section_times):
-            mod_preference_for_time = mod_time_preferences[mod_index][time_index]
-            
-            if mod_preference_for_time != DOODLE_IMPOSSIBLE_TIME:
-                is_preferred_time = (mod_preference_for_time == DOODLE_PREFERRED_TIME)
-                cp_var_name = ('mod_' + str(mod_index) + ':time_' + str(time_index))
-                constraint_programming_var = model.NewIntVar(0, 1, cp_var_name)
-                variable_wrapper = PersonAssignedToTimeVariableWrapper(mod_net_ids[mod_index], time_index,
-                                                                      is_preferred_time, constraint_programming_var)
-
-                mod_variables[mod_index].append(variable_wrapper)
-            else:
-                mod_variables[mod_index].append(None)
-
-    for student_index in range(num_students):
-        student_variables.append([])
-
-        for time_index in range(num_section_times):
-            student_preference_for_time = student_time_preferences[student_index][time_index]
-            
-            if student_preference_for_time != DOODLE_IMPOSSIBLE_TIME:
-                is_preferred_time = (student_preference_for_time == DOODLE_PREFERRED_TIME)
-                cp_var_name = ('student_' + str(student_index) + ':time_' + str(time_index))
-                constraint_programming_var = model.NewIntVar(0, 1, cp_var_name)
-                variable_wrapper = PersonAssignedToTimeVariableWrapper(student_net_ids[student_index], time_index,
-                                                                      is_preferred_time, constraint_programming_var)
-
-                student_variables[student_index].append(variable_wrapper)
-            else:
-                student_variables[student_index].append(None)
-
-    return mod_variables, student_variables
