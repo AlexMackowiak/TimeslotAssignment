@@ -39,6 +39,12 @@ def assignModeratorsAndStudents(mod_doodle_poll_csv_path, mod_max_section_csv_pa
             mod_doodle_poll_csv_path: The file path to the Doodle poll for the moderators in .csv format
             mod_max_section_csv_path: The file path to the max sections .csv file
             student_doodle_poll_csv_path: The file path to the Doodle poll for the students in .csv format
+
+        Returns:
+            mods_assigned_to_times: List of List of Strings, each entry is all net IDs of the moderators assigned
+                                        to that time index
+            students_assigned_to_times: List of List of Strings, each entry is all net IDs of the moderators assigned
+                                        to that time index
     """
     (mod_net_ids, mod_time_preferences) = readDoodlePreferences(mod_doodle_poll_csv_path)
     max_sections_per_mod = readModMaxSectionPreferences(mod_max_section_csv_path, mod_net_ids)
@@ -82,21 +88,7 @@ def assignModeratorsAndStudents(mod_doodle_poll_csv_path, mod_max_section_csv_pa
     status = solver.Solve(model)
     print(solver.StatusName(status))
     assert (status == cp_model.OPTIMAL) or (status == cp_model.FEASIBLE)
-
-    for time_index in range(num_section_times):
-        mods_in_time = []
-        for mod_index in range(num_mods):
-            mod_time_var_wrapper = mod_time_variables[mod_index][time_index]
-            if mod_time_var_wrapper is not None and mod_time_var_wrapper.isTimeAssignedToPerson(solver):
-                mods_in_time.append(mod_time_var_wrapper.net_id)
-
-        students_in_time = []
-        for student_index in range(num_students):
-            student_time_var_wrapper = student_time_variables[student_index][time_index]
-            if student_time_var_wrapper is not None and student_time_var_wrapper.isTimeAssignedToPerson(solver):
-                students_in_time.append(student_time_var_wrapper.net_id)
-
-        print('Time ' + str(time_index) + ': ' + str(mods_in_time) + ' ' + str(students_in_time))
+    return extractModAndStudentAssignments(solver, mod_time_variables, student_time_variables)
 
 def setupConstraintProgrammingVariables(model, net_ids, time_preferences, is_mod_data):
     """
@@ -310,3 +302,40 @@ def addFunctionToMinimize(model, mod_time_variables, student_time_variables):
                 not_preferred_variables.append(student_time_var_wrapper.variable)
 
     model.Minimize(sum(not_preferred_variables))
+
+def extractModAndStudentAssignments(solver, mod_time_variables, student_time_variables):
+    """
+        Args:
+            solver: The cp_model.CpSolver object which previously solved the constraint problem
+            mod_time_variables: 2D List of PersonTimeVariableWrapper, if [mod_index][time_index]
+                                    is None then that time is impossible for that mod
+            student_time_variables: 2D List of PersonTimeVariableWrapper,
+                                        if [student_index][time_index] is None then
+                                        that time is impossible for that student
+
+        Returns:
+            mods_assigned_to_times: List of List of Strings, each entry is all net IDs of the moderators assigned
+                                        to that time index
+            students_assigned_to_times: List of List of Strings, each entry is all net IDs of the moderators assigned
+                                        to that time index
+    """
+    num_mods = len(mod_time_variables)
+    num_students = len(student_time_variables)
+    num_section_times = len(mod_time_variables[0])
+    mods_assigned_to_times = []
+    students_assigned_to_times = []
+
+    for time_index in range(num_section_times):
+        mods_assigned_to_times.append([])
+        for mod_index in range(num_mods):
+            mod_time_var_wrapper = mod_time_variables[mod_index][time_index]
+            if mod_time_var_wrapper is not None and mod_time_var_wrapper.isTimeAssignedToPerson(solver):
+                mods_assigned_to_times[time_index].append(mod_time_var_wrapper.net_id)
+
+        students_assigned_to_times.append([])
+        for student_index in range(num_students):
+            student_time_var_wrapper = student_time_variables[student_index][time_index]
+            if student_time_var_wrapper is not None and student_time_var_wrapper.isTimeAssignedToPerson(solver):
+                students_assigned_to_times[time_index].append(student_time_var_wrapper.net_id)
+
+    return mods_assigned_to_times, students_assigned_to_times
