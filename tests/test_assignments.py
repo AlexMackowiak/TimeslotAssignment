@@ -6,8 +6,8 @@ class TestAssignments(unittest.TestCase):
     """ Tests that assignment works correctly """
 
     def test_basic_functionality(self):
-        """ Tests that the only possible assignments are made for an obvious case """
-        test_data_dir = 'test_data/small_easy/'
+        """ Tests that the only possible assignments are made for a trivial case """
+        test_data_dir = 'test_data/basic_functionality/'
         expected_mod_assignments = [['amackow2'],
                                     ['albertl3'],
                                     ['ysharma5']]
@@ -16,6 +16,23 @@ class TestAssignments(unittest.TestCase):
                                         ['c1', 'c2', 'c3', 'c4', 'c5', 'c6']]
 
         self.verify_assignments(test_data_dir, expected_mod_assignments, expected_student_assignments)
+
+    def test_two_sections_one_mod(self):
+        """ Tests that a moderator can be assigned multiple sections with the right preferences """
+        test_data_dir = 'test_data/two_sections_one_mod/'
+        expected_mod_assignments = [['amackow2'],
+                                    ['albertl3'],
+                                    ['ysharma5'],
+                                    ['amackow2']]
+        expected_student_assignments = [['a1', 'a2', 'a3', 'a4', 'a5', 'a6'],
+                                        ['b1', 'b2', 'b3', 'b4', 'b5', 'b6'],
+                                        ['c1', 'c2', 'c3', 'c4', 'c5', 'c6'],
+                                        ['d1', 'd2', 'd3', 'd4', 'd5']]
+
+        self.verify_assignments(test_data_dir, expected_mod_assignments, expected_student_assignments)
+
+
+#    def test_chooses_preferred_times(self):
 
     def verify_assignments(self, test_data_dir, expected_mod_assignments, expected_student_assignments):
         mod_doodle_poll_csv_path = (test_data_dir + 'mod_preferences.csv')

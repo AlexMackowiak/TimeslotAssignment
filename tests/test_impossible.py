@@ -19,6 +19,11 @@ class TestImpossible(unittest.TestCase):
         test_data_dir = 'test_data/too_few_mods/'
         self.verify_no_solution(test_data_dir)
 
+    def test_mod_with_zero_max_sections(self):
+        """ Tests that a moderator with zero max sections is not assigned a section """
+        test_data_dir = 'test_data/zero_max_sections/'
+        self.verify_no_solution(test_data_dir)
+
     def verify_no_solution(self, test_data_dir):
         mod_doodle_poll_csv_path = (test_data_dir + 'mod_preferences.csv')
         mod_max_sections_csv_path = (test_data_dir + 'mod_max_sections.csv')

@@ -5,7 +5,7 @@ class TestInput(unittest.TestCase):
     """ Tests related to reading input from CSV formats """
 
     def test_read_mod_doodle_poll(self):
-        mod_doodle_poll_csv_path = 'test_data/small_easy/mod_preferences.csv'
+        mod_doodle_poll_csv_path = 'test_data/basic_functionality/mod_preferences.csv'
         (mod_net_ids, mod_time_preferences) = readDoodlePreferences(mod_doodle_poll_csv_path)
 
         expected_net_ids = ['amackow2', 'albertl3', 'ysharma5']
@@ -17,8 +17,8 @@ class TestInput(unittest.TestCase):
         self.assertEqual(mod_time_preferences, expected_time_preferences)
 
     def test_read_mod_max_sections(self):
-        mod_doodle_poll_csv_path = 'test_data/small_easy_2/mod_preferences.csv'
-        mod_max_sections_csv_path = 'test_data/small_easy_2/mod_max_sections.csv'
+        mod_doodle_poll_csv_path = 'test_data/two_sections_one_mod/mod_preferences.csv'
+        mod_max_sections_csv_path = 'test_data/two_sections_one_mod/mod_max_sections.csv'
         (mod_net_ids, _) = readDoodlePreferences(mod_doodle_poll_csv_path)
 
         # The max sections data is purposefully out of order to test that order doesn't matter
@@ -28,7 +28,7 @@ class TestInput(unittest.TestCase):
         self.assertEqual(max_sections_per_mod, expected_max_sections_per_mod)
 
     def test_read_student_doodle_poll(self):
-        student_doodle_poll_csv_path = 'test_data/small_easy/student_preferences.csv'
+        student_doodle_poll_csv_path = 'test_data/basic_functionality/student_preferences.csv'
         (net_ids, time_preferences) = readDoodlePreferences(student_doodle_poll_csv_path)
         
         expected_net_ids = ['a1', 'a2', 'a3', 'a4', 'a5', 'a6',
