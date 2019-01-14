@@ -85,8 +85,10 @@ def assignModeratorsAndStudents(mod_doodle_poll_csv_path, mod_max_section_csv_pa
 
     # Kick off the solver, and verify an optimal solution exists
     solver = cp_model.CpSolver()
-    status = solver.Solve(model)
+    solution_counter = SolutionCounter()
+    status = solver.SolveWithSolutionCallback(model, solution_counter)
     print(solver.StatusName(status))
+    print("Solutions considered: " + str(solution_counter.solution_count))
     assert (status == cp_model.OPTIMAL) or (status == cp_model.FEASIBLE)
     return extractModAndStudentAssignments(solver, mod_time_variables, student_time_variables)
 
@@ -339,3 +341,13 @@ def extractModAndStudentAssignments(solver, mod_time_variables, student_time_var
                 students_assigned_to_times[time_index].append(student_time_var_wrapper.net_id)
 
     return mods_assigned_to_times, students_assigned_to_times
+
+class SolutionCounter(cp_model.CpSolverSolutionCallback):
+    """ Simple callback class to count the number of solutions considered """
+
+    def __init__(self):
+        cp_model.CpSolverSolutionCallback.__init__(self)
+        self.solution_count = 0
+
+    def on_solution_callback(self):
+        self.solution_count += 1

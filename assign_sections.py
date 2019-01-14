@@ -3,7 +3,7 @@ from student_assignments import assignStudents
 from experimental_assignments_2 import assignModeratorsAndStudents
 
 if __name__ == "__main__":
-    test_data_directory = 'test_data/fa18/'
+    test_data_directory = 'test_data/fa18_data/'
     mod_doodle_poll_csv_path = test_data_directory + 'mod_preferences.csv'
     mod_max_sections_csv_path = test_data_directory + 'mod_max_sections.csv'
     student_doodle_poll_csv_path = test_data_directory + 'student_preferences.csv'
