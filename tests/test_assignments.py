@@ -31,8 +31,51 @@ class TestAssignments(unittest.TestCase):
 
         self.verify_assignments(test_data_dir, expected_mod_assignments, expected_student_assignments)
 
+    def test_four_sections_one_aamir(self):
+        """ Tests a moderator can be assigned to many sections """
+        test_data_dir = 'test_data/four_sections_one_aamir/'
+        expected_mod_assignments = [['aamirh2'],
+                                    ['aamirh2'],
+                                    ['albertl3'],
+                                    ['aamirh2'],
+                                    ['aamirh2'],
+                                    ['albertl3']]
+        expected_student_assignments = [['a1', 'a2', 'a3', 'a4', 'a5', 'a6'],
+                                        ['b1', 'b2', 'b3', 'b4', 'b5'],
+                                        ['c1', 'c2', 'c3', 'c4', 'c5', 'c6'],
+                                        ['d1', 'd2', 'd3', 'd4', 'd5', 'd6'],
+                                        ['e1', 'e2', 'e3', 'e4', 'e5'],
+                                        ['f1', 'f2', 'f3', 'f4', 'f5', 'f6']]
 
-#    def test_chooses_preferred_times(self):
+        self.verify_assignments(test_data_dir, expected_mod_assignments, expected_student_assignments)
+
+    def test_three_mods_one_section_time(self):
+        """ Tests that multiple moderators can be assigned to a section time """
+        test_data_dir = 'test_data/three_mods_one_section_time/'
+        expected_mod_assignments = [['ssolank2', 'ztan19', 'amackow2'],
+                                    ['bzinn2'],
+                                    ['pjg4']]
+        expected_student_assignments = [['a1', 'a2', 'a3', 'a4', 'a5',
+                                            'c1', 'c2', 'c3', 'c4', 'c5', 'c6',
+                                            'e1', 'e2', 'e3', 'e4', 'e5'],
+                                        ['b1', 'b2', 'b3', 'b4', 'b5', 'b6'],
+                                        ['d1', 'd2', 'd3', 'd4', 'd5']]
+
+        self.verify_assignments(test_data_dir, expected_mod_assignments, expected_student_assignments)
+
+    def test_chooses_preferred_times(self):
+        """ Tests that no not preferred times are chosen when a solution exists without them """
+        test_data_dir = 'test_data/chooses_preferred_times/'
+        expected_mod_assignments = [['amackow2'],
+                                    ['albertl3'],
+                                    ['ysharma5'],
+                                    ['albertl3']]
+        expected_student_assignments = [['c1', 'c2', 'c3', 'c4', 'c5'],
+                                        ['a1', 'a2', 'a3', 'a4', 'a5'],
+                                        ['b1', 'b2', 'b3', 'b4', 'b5', 'b6'],
+                                        ['d1', 'd2', 'd3', 'd4', 'd5', 'd6']]
+
+        self.verify_assignments(test_data_dir, expected_mod_assignments, expected_student_assignments)
 
     def verify_assignments(self, test_data_dir, expected_mod_assignments, expected_student_assignments):
         mod_doodle_poll_csv_path = (test_data_dir + 'mod_preferences.csv')
