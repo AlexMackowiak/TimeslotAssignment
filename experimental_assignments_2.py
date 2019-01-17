@@ -145,6 +145,7 @@ def addMaxSectionsPerModConstraint(model, mod_time_variables, max_sections_per_m
                                      for time_index in range(num_section_times)
                                      if mod_time_variables[mod_index][time_index] is not None])
 
+        model.Add(1 <= all_time_vars_for_mod)
         model.Add(all_time_vars_for_mod <= max_sections_per_mod[mod_index])
 
 def addMaxSectionsPerSectionTimeConstraint(model, mod_time_variables):
@@ -326,19 +327,28 @@ def extractModAndStudentAssignments(solver, mod_time_variables, student_time_var
     num_section_times = len(mod_time_variables[0])
     mods_assigned_to_times = []
     students_assigned_to_times = []
+    num_not_preferred_mod_times = 0
+    num_not_preferred_student_times = 0
 
     for time_index in range(num_section_times):
         mods_assigned_to_times.append([])
         for mod_index in range(num_mods):
             mod_time_var_wrapper = mod_time_variables[mod_index][time_index]
             if mod_time_var_wrapper is not None and mod_time_var_wrapper.isTimeAssignedToPerson(solver):
+                if not mod_time_var_wrapper.is_preferred_time:
+                    num_not_preferred_mod_times += 1
                 mods_assigned_to_times[time_index].append(mod_time_var_wrapper.net_id)
 
         students_assigned_to_times.append([])
         for student_index in range(num_students):
             student_time_var_wrapper = student_time_variables[student_index][time_index]
             if student_time_var_wrapper is not None and student_time_var_wrapper.isTimeAssignedToPerson(solver):
+                if not student_time_var_wrapper.is_preferred_time:
+                    num_not_preferred_student_times += 1
                 students_assigned_to_times[time_index].append(student_time_var_wrapper.net_id)
+
+    print('Mods assigned to not preferred time: ' + str(num_not_preferred_mod_times))
+    print('Students assigned to not preferred time: ' + str(num_not_preferred_student_times))
 
     return mods_assigned_to_times, students_assigned_to_times
 
