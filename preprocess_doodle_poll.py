@@ -69,6 +69,7 @@ if __name__ == "__main__":
 
             if netID in latest_entries:
                 num_duplicates_removed += 1
+                del latest_entries[netID] # New entries are moved to the bottom
             latest_entries[netID] = entry
 
     # Find students who didn't give us enough times
