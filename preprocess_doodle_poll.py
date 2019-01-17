@@ -9,7 +9,8 @@ DOODLE_IMPOSSIBLE_TIME = ''
 MINIMUM_REQUIRED_TIMES = 7
 
 def printUsage():
-    print('This program takes one argument: the Doodle poll preference .csv for which to remove earlier netIDs with later poll submissions')
+    print('This program takes one mandatory argument: the Doodle poll preference .csv which is to be processed\n' +\
+          'A second, optional, argument can be given for a .csv file that maps from names to NetIDs when people can\'t read')
 
 """
 This script writes to a new file after doing the following 4 things:
@@ -19,7 +20,7 @@ This script writes to a new file after doing the following 4 things:
 4. Trims the useless starting and ending information from the poll so only time preference information remains in the file
 """
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
+    if len(sys.argv) != 2 and len(sys.argv) != 3:
         printUsage()
         exit()
 
@@ -28,12 +29,15 @@ if __name__ == "__main__":
 
     # Build mapping for people who filled out the poll with their name
     name_to_netid_map = {}
-    people_who_cant_read_csv_path = 'people_who_cant_read_sp19.csv'
-    with open(people_who_cant_read_csv_path, 'r', encoding='utf-8-sig') as cant_read_file:
-        for entry in csv.reader(cant_read_file):
-            name = entry[0]
-            netID = entry[1]
-            name_to_netid_map[name] = netID
+    if len(sys.argv) == 3:
+        people_who_cant_read_csv_path = sys.argv[2]
+        with open(people_who_cant_read_csv_path, 'r', encoding='utf-8-sig') as cant_read_file:
+            for entry in csv.reader(cant_read_file):
+                name = entry[0]
+                netID = entry[1]
+                name_to_netid_map[name] = netID
+    else:
+        print('No "can\'t read" mapping file specified, non-netIDs will be skipped')
 
     with open(preference_csv_path, 'r', encoding='utf-8-sig') as pref_file:
         pref_csv_contents = list(csv.reader(pref_file))
