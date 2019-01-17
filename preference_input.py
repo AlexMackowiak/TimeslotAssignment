@@ -1,13 +1,11 @@
 import csv
 
-DOODLE_RESPONSE_START_LINE = 6
-
 def readDoodlePreferences(doodle_poll_csv_path):
     """
-        Reads in the time preferences for every person from a Doodle poll .csv file
+        Reads in the time preferences for every person from a preprocessed Doodle poll .csv file
 
         Args:
-            doodle_poll_csv_path: The file path to the Doodle poll spreadsheet in .csv format
+            doodle_poll_csv_path: The file path to the preprocessed Doodle poll spreadsheet in .csv format
 
         Returns:
             net_ids: List of Strings for each person's net ID
@@ -24,11 +22,7 @@ def readDoodlePreferences(doodle_poll_csv_path):
     all_time_preferences = []
 
     with open(doodle_poll_csv_path, 'r', encoding='utf-8-sig') as pref_file:
-        # Read in preferences file and trim to the start of the actual preference lines
-        preference_data = list(csv.reader(pref_file))
-        preference_data = preference_data[DOODLE_RESPONSE_START_LINE:]
-
-        for preference_entry in preference_data:
+        for preference_entry in csv.reader(pref_file):
             net_id = preference_entry[0]
             time_preferences = preference_entry[1:]
 
