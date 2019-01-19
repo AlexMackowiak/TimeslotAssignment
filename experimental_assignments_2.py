@@ -1,3 +1,4 @@
+import time
 from preference_input import readDoodlePreferences, readModMaxSectionPreferences
 from ortools.sat.python import cp_model
 
@@ -6,6 +7,7 @@ DOODLE_NOT_PREFERRED_TIME = '(OK)'
 DOODLE_IMPOSSIBLE_TIME = ''
 MIN_STUDENTS_PER_SECTION = 5
 MAX_STUDENTS_PER_SECTION = 6
+FOURTH_ROOM = True # Temporary variable to indicate if we have a fourth room
 
 class PersonTimeVariableWrapper:
     """ Wrapper class around a CP variable that represents an assignment of a mod/student to a time """
@@ -145,8 +147,9 @@ def addMaxSectionsPerModConstraint(model, mod_time_variables, max_sections_per_m
                                      for time_index in range(num_section_times)
                                      if mod_time_variables[mod_index][time_index] is not None])
 
-        model.Add(1 <= all_time_vars_for_mod)
-        model.Add(all_time_vars_for_mod <= max_sections_per_mod[mod_index])
+        #model.Add(1 <= all_time_vars_for_mod)
+        #model.Add(all_time_vars_for_mod <= max_sections_per_mod[mod_index])
+        model.Add(all_time_vars_for_mod == max_sections_per_mod[mod_index])
 
 def addMaxSectionsPerSectionTimeConstraint(model, mod_time_variables):
     """
@@ -162,6 +165,12 @@ def addMaxSectionsPerSectionTimeConstraint(model, mod_time_variables):
     num_mods = len(mod_time_variables)
     num_section_times = len(mod_time_variables[0])
     max_sections_per_time = [3] * num_section_times
+
+    if FOURTH_ROOM:
+        # We have a fourth room on Wednesday from 12 PM to 6 PM
+        max_sections_per_time[1] = 4
+        max_sections_per_time[2] = 4
+        max_sections_per_time[3] = 4
 
     for time_index in range(num_section_times):
         all_mod_vars_for_time = sum([mod_time_variables[mod_index][time_index].variable
@@ -223,6 +232,12 @@ def addStudentsPerSectionTimeConstraint(model, mod_time_variables, student_time_
     num_section_times = len(mod_time_variables[0])
     num_decision_vars = 0
     max_sections_for_times = [3] * num_section_times
+
+    if FOURTH_ROOM:
+        # We have a fourth room on Wednesday from 12 PM to 6 PM
+        max_sections_for_times[1] = 4
+        max_sections_for_times[2] = 4
+        max_sections_for_times[3] = 4
 
     for time_index in range(num_section_times):
         max_sections_for_time = max_sections_for_times[time_index]
@@ -297,12 +312,16 @@ def addFunctionToMinimize(model, mod_time_variables, student_time_variables):
         for mod_index in range(num_mods):
             mod_time_var_wrapper = mod_time_variables[mod_index][time_index]
             if mod_time_var_wrapper is not None and not mod_time_var_wrapper.is_preferred_time:
-                not_preferred_variables.append(mod_time_var_wrapper.variable)
+                #coefficient = ((MAX_STUDENTS_PER_SECTION + 1) * num_students) + (num_mods - mod_index)
+                coefficient = 1
+                not_preferred_variables.append(coefficient * mod_time_var_wrapper.variable)
 
         for student_index in range(num_students):
             student_time_var_wrapper = student_time_variables[student_index][time_index]
             if student_time_var_wrapper is not None and not student_time_var_wrapper.is_preferred_time:
-                not_preferred_variables.append(student_time_var_wrapper.variable)
+                #coefficient = (num_students - student_index)
+                coefficient = 1
+                not_preferred_variables.append(coefficient * student_time_var_wrapper.variable)
 
     model.Minimize(sum(not_preferred_variables))
 
@@ -352,12 +371,20 @@ def extractModAndStudentAssignments(solver, mod_time_variables, student_time_var
 
     return mods_assigned_to_times, students_assigned_to_times
 
+def currentMillis():
+    return int(round(time.time() * 1000))
+
 class SolutionCounter(cp_model.CpSolverSolutionCallback):
     """ Simple callback class to count the number of solutions considered """
 
     def __init__(self):
         cp_model.CpSolverSolutionCallback.__init__(self)
         self.solution_count = 0
+        self.millis_at_last_solution = currentMillis()
 
     def on_solution_callback(self):
         self.solution_count += 1
+        millis_since_last_solution = (currentMillis() - self.millis_at_last_solution)
+        seconds_since_last_solution = (millis_since_last_solution / 1000.0)
+        print('Solution found, time since last: ' + str(seconds_since_last_solution) + ' seconds')
+        self.millis_at_last_solution = currentMillis()
