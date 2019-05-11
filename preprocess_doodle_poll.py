@@ -12,6 +12,9 @@ def printUsage():
     print('This program takes one mandatory argument: the Doodle poll preference .csv which is to be processed\n' +\
           'A second, optional, argument can be given for a .csv file that maps from names to NetIDs when people can\'t read')
 
+# All the student netIDs that don't follow standard conventions should go here
+strange_net_ids = {'gsoares'}
+
 """
 This script writes to a new file after doing the following 4 things:
 1. Replaces names (when people can't read directions) with NetIDs according to a mapping defined in a .csv file
@@ -59,7 +62,7 @@ if __name__ == "__main__":
                 num_names_fixed += 1
 
             # Make sure it actually looks somewhat like a netID
-            if ((not netID[0].isalpha()) or (not netID[-1].isdigit())) and (netID != 'gsoares'):
+            if ((not netID[0].isalpha()) or (not netID[-1].isdigit())) and (netID not in strange_net_ids):
                 print(netID + ' does not look like a NetID, skipping')
                 continue
 
@@ -75,11 +78,7 @@ if __name__ == "__main__":
     # Find students who didn't give us enough times
     for netID in latest_entries:
         preferences = latest_entries[netID][1:]
-        num_times_given = 0
-
-        for preference in preferences:
-            if preference != DOODLE_IMPOSSIBLE_TIME:
-                num_times_given += 1
+        num_times_given = len(preferences) - preferences.count(DOODLE_IMPOSSIBLE_TIME)
 
         if num_times_given < MINIMUM_REQUIRED_TIMES:
             print(netID + ': ' + str(num_times_given) + ' times')
@@ -90,13 +89,9 @@ if __name__ == "__main__":
 
     with open(replaced_csv_path, 'w+', encoding='utf-8-sig') as output_file:
         pref_writer = csv.writer(output_file, quoting=csv.QUOTE_NONE, escapechar='\\')
-        #for line in pref_csv_contents[0:DOODLE_RESPONSE_START_LINE]:
-        #    pref_writer.writerow(line)
-
         for netID in latest_entries:
             pref_writer.writerow(latest_entries[netID])
 
-    # Print number replaced
-    print('Doodle poll preference file rewritten to ' + replaced_csv_path)
-    print('Duplicate entries removed: ' + str(num_duplicates_removed))
-    print('Names substituted for NetIDs: ' + str(num_names_fixed))
+    print('Doodle poll preference file rewritten to', replaced_csv_path)
+    print('Duplicate entries removed:', num_duplicates_removed)
+    print('Names substituted for NetIDs:', num_names_fixed)
