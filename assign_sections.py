@@ -1,8 +1,6 @@
 import csv
 import random
-from moderator_assignments import assignModerators
-from student_assignments import assignStudents
-from experimental_assignments_2 import assignModeratorsAndStudents
+from assign_time_slots import assignModeratorsAndStudents
 
 def main():
     test_data_directory = 'test_data/sp19_data/'
@@ -15,7 +13,7 @@ def main():
     assert len(mods_assigned_to_times) == len(students_assigned_to_times)
     section_assignments = assignSectionsFromSectionTimes(mods_assigned_to_times, students_assigned_to_times)
 
-    mod_net_id_to_name_csv_path = 'sp19_mod_net_ids_to_names.csv'
+    mod_net_id_to_name_csv_path = 'sp19_full_data/sp19_mod_net_ids_to_names.csv'
     mod_net_id_to_name_dict = readModNetIDToNameMapping(mod_net_id_to_name_csv_path)
     write_sections_to_csv(section_assignments, mod_net_id_to_name_dict)
 

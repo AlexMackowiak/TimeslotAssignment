@@ -7,7 +7,7 @@ DOODLE_NOT_PREFERRED_TIME = '(OK)'
 DOODLE_IMPOSSIBLE_TIME = ''
 MIN_STUDENTS_PER_SECTION = 5
 MAX_STUDENTS_PER_SECTION = 6
-FOURTH_ROOM = True # Temporary variable to indicate if we have a fourth room
+FOURTH_ROOM = False # Temporary variable to indicate if we have a fourth room
 
 class PersonTimeVariableWrapper:
     """ Wrapper class around a CP variable that represents an assignment of a mod/student to a time """
@@ -147,9 +147,9 @@ def addMaxSectionsPerModConstraint(model, mod_time_variables, max_sections_per_m
                                      for time_index in range(num_section_times)
                                      if mod_time_variables[mod_index][time_index] is not None])
 
-        #model.Add(1 <= all_time_vars_for_mod)
-        #model.Add(all_time_vars_for_mod <= max_sections_per_mod[mod_index])
-        model.Add(all_time_vars_for_mod == max_sections_per_mod[mod_index])
+        model.Add(1 <= all_time_vars_for_mod)
+        model.Add(all_time_vars_for_mod <= max_sections_per_mod[mod_index])
+        #model.Add(all_time_vars_for_mod == max_sections_per_mod[mod_index])
 
 def addMaxSectionsPerSectionTimeConstraint(model, mod_time_variables):
     """

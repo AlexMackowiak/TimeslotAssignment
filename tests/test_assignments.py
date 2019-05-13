@@ -1,5 +1,5 @@
 import unittest
-from experimental_assignments_2 import assignModeratorsAndStudents
+from assign_time_slots import assignModeratorsAndStudents
 from preference_input import readDoodlePreferences, readModMaxSectionPreferences
 
 class TestAssignments(unittest.TestCase):

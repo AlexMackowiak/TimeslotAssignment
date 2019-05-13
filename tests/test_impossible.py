@@ -1,5 +1,5 @@
 import unittest
-from experimental_assignments_2 import assignModeratorsAndStudents
+from assign_time_slots import assignModeratorsAndStudents
 
 class TestImpossible(unittest.TestCase):
     """ Tests that no assignments can be made for inputs with no solution """
