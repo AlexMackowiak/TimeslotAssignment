@@ -57,6 +57,13 @@ def readModNetIDToNameMapping(mod_net_id_to_name_csv_path):
             net_id = entry[0]
             name = entry[1]
 
+            # Do some rudimentary error checking, SP19 had two mods with flipped Net IDs
+            if config.mod_net_id_error_check:
+                (first_name, last_name) = name.lower().split(' ', 1)
+                if (net_id[0] != first_name[0]) and (net_id[0] != last_name[0]):
+                    print('Warning: Net ID ' + net_id + ' does not appear to correspond to ' + name,
+                          'please double check this')
+
             mod_net_id_to_name_dict[net_id] = name
 
     return mod_net_id_to_name_dict

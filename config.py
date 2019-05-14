@@ -32,3 +32,6 @@ assign_exact_max_sections = True
 # The SP19 semester had a fourth room only during Wednesday 12 PM - 6 PM
 # Handling this is a little hacky at the moment, note to self: bake this into the section_times CSV
 semester_has_fourth_room = True
+
+# When True, will do some simple checking to see if the mod's net ID roughly corresponds to their name
+mod_net_id_error_check = True
