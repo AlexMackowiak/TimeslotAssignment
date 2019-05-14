@@ -1,9 +1,15 @@
 import unittest
+import config
 from assign_time_slots import assignModeratorsAndStudents
 from preference_input import readDoodlePreferences, readModMaxSectionPreferences
 
 class TestAssignments(unittest.TestCase):
     """ Tests that assignment works correctly """
+
+    def setUp(self):
+        # Ensure that config options are correct for testing
+        config.assign_exact_max_sections = False
+        config.semester_has_fourth_room = False
 
     def test_basic_functionality(self):
         """ Tests that the only possible assignments are made for a trivial case """

@@ -1,4 +1,5 @@
 import time
+import config
 from preference_input import readDoodlePreferences, readModMaxSectionPreferences
 from ortools.sat.python import cp_model
 
@@ -7,7 +8,6 @@ DOODLE_NOT_PREFERRED_TIME = '(OK)'
 DOODLE_IMPOSSIBLE_TIME = ''
 MIN_STUDENTS_PER_SECTION = 5
 MAX_STUDENTS_PER_SECTION = 6
-FOURTH_ROOM = False # Temporary variable to indicate if we have a fourth room
 
 class PersonTimeVariableWrapper:
     """ Wrapper class around a CP variable that represents an assignment of a mod/student to a time """
@@ -74,10 +74,10 @@ def assignModeratorsAndStudents(mod_doodle_poll_csv_path, mod_max_section_csv_pa
             if student_time_variables[student_index][time_index] is not None:
                 var_count += 1
 
-    print('Num mods: ' + str(num_mods))
-    print('Num students: ' + str(num_students))
-    print('Num section times: ' + str(num_section_times))
-    print('Num person/time variables: ' + str(var_count))
+    print('Num mods:', num_mods)
+    print('Num students:', num_students)
+    print('Num section times:', num_section_times)
+    print('Num person/time variables:', var_count)
 
     addMaxSectionsPerModConstraint(model, mod_time_variables, max_sections_per_mod)
     addMaxSectionsPerSectionTimeConstraint(model, mod_time_variables)
@@ -90,7 +90,7 @@ def assignModeratorsAndStudents(mod_doodle_poll_csv_path, mod_max_section_csv_pa
     solution_counter = SolutionCounter()
     status = solver.SolveWithSolutionCallback(model, solution_counter)
     print(solver.StatusName(status))
-    print("Solutions considered:", str(solution_counter.solution_count))
+    print("Solutions considered:", solution_counter.solution_count)
     assert (status == cp_model.OPTIMAL) # or (status == cp_model.FEASIBLE)
     return extractModAndStudentAssignments(solver, mod_time_variables, student_time_variables)
 
@@ -147,9 +147,11 @@ def addMaxSectionsPerModConstraint(model, mod_time_variables, max_sections_per_m
                                      for time_index in range(num_section_times)
                                      if mod_time_variables[mod_index][time_index] is not None])
 
-        model.Add(1 <= all_time_vars_for_mod)
-        model.Add(all_time_vars_for_mod <= max_sections_per_mod[mod_index])
-        #model.Add(all_time_vars_for_mod == max_sections_per_mod[mod_index])
+        if config.assign_exact_max_sections:
+            model.Add(all_time_vars_for_mod == max_sections_per_mod[mod_index])
+        else:
+            model.Add(1 <= all_time_vars_for_mod)
+            model.Add(all_time_vars_for_mod <= max_sections_per_mod[mod_index])
 
 def addMaxSectionsPerSectionTimeConstraint(model, mod_time_variables):
     """
@@ -166,7 +168,7 @@ def addMaxSectionsPerSectionTimeConstraint(model, mod_time_variables):
     num_section_times = len(mod_time_variables[0])
     max_sections_per_time = [3] * num_section_times
 
-    if FOURTH_ROOM:
+    if config.semester_has_fourth_room:
         # We have a fourth room on Wednesday from 12 PM to 6 PM
         max_sections_per_time[1] = 4
         max_sections_per_time[2] = 4
@@ -233,7 +235,7 @@ def addStudentsPerSectionTimeConstraint(model, mod_time_variables, student_time_
     num_decision_vars = 0
     max_sections_for_times = [3] * num_section_times
 
-    if FOURTH_ROOM:
+    if config.semester_has_fourth_room:
         # We have a fourth room on Wednesday from 12 PM to 6 PM
         max_sections_for_times[1] = 4
         max_sections_for_times[2] = 4

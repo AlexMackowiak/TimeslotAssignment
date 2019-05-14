@@ -21,3 +21,14 @@ output_csv_path = 'sp19_final_assignments.csv'
 # The file path to a CSV with [section time] on each line specifying all available section time slots
 # These times MUST be the exact same and in the exact same order as the mod and student Doodle polls
 section_times_csv_path = 'sp19_full_data/section_times.csv'
+
+
+# When this is True, all moderators will be assigned to exactly their maximum amount of sections
+# This option is great for creating a good amount of sections with 5 students and reducing computation time
+# The downside however is that the program will fail to find a solution if not every mod can have their
+#  exact maximum amount of sections, so it will require manual fine tuning of the preferences file
+assign_exact_max_sections = True
+
+# The SP19 semester had a fourth room only during Wednesday 12 PM - 6 PM
+# Handling this is a little hacky at the moment, note to self: bake this into the section_times CSV
+semester_has_fourth_room = True
