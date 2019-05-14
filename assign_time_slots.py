@@ -90,8 +90,8 @@ def assignModeratorsAndStudents(mod_doodle_poll_csv_path, mod_max_section_csv_pa
     solution_counter = SolutionCounter()
     status = solver.SolveWithSolutionCallback(model, solution_counter)
     print(solver.StatusName(status))
-    print("Solutions considered: " + str(solution_counter.solution_count))
-    assert (status == cp_model.OPTIMAL) or (status == cp_model.FEASIBLE)
+    print("Solutions considered:", str(solution_counter.solution_count))
+    assert (status == cp_model.OPTIMAL) # or (status == cp_model.FEASIBLE)
     return extractModAndStudentAssignments(solver, mod_time_variables, student_time_variables)
 
 def setupConstraintProgrammingVariables(model, net_ids, time_preferences, is_mod_data):
