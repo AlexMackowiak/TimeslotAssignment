@@ -1,7 +1,7 @@
 import unittest
 import config
 from assign_time_slots import assignModeratorsAndStudents
-from preference_input import readDoodlePreferences, readModMaxSectionPreferences
+from csv_input import readDoodlePreferences, readModMaxSectionPreferences
 
 class TestAssignments(unittest.TestCase):
     """ Tests that assignment works correctly """

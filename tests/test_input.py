@@ -1,5 +1,5 @@
 import unittest
-from preference_input import readDoodlePreferences, readModMaxSectionPreferences
+from csv_input import readDoodlePreferences, readModMaxSectionPreferences
 
 class TestInput(unittest.TestCase):
     """ Tests related to reading input from CSV formats """
