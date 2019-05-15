@@ -107,3 +107,24 @@ def readModNetIDToNameMapping(mod_net_id_to_name_csv_path, mod_net_id_error_chec
             mod_net_id_to_name_dict[net_id] = name
 
     return mod_net_id_to_name_dict
+
+def readSectionTimeInfo(section_time_csv_path):
+    """
+        Args:
+            section_time_csv_path: The file path to a CSV file with [section time],[num rooms at time]
+                                    format. Example: "Wednesday 10 AM - 12 PM,4"
+
+        Returns:
+            section_times: List of String where each index is the description of the section time
+            num_rooms_in_each_time: List of Integer where each index is the number of rooms
+                                    available at that time index
+    """
+    section_times = []
+    num_rooms_in_each_time = []
+
+    with open(section_time_csv_path, 'r', encoding='utf-8-sig') as section_time_file:
+        for entry in csv.reader(section_time_file):
+            section_times.append(entry[0])
+            num_rooms_in_each_time.append(int(entry[1]))
+
+    return section_times, num_rooms_in_each_time

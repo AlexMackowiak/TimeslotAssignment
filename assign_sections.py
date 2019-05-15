@@ -1,14 +1,15 @@
 import csv
 import config
-from csv_input import readModNetIDToNameMapping
+from csv_input import readModNetIDToNameMapping, readSectionTimeInfo
 from assign_time_slots import assignModeratorsAndStudents
 from create_sections_from_time_slots import assignSectionsFromSectionTimes
 
 def main():
     # Assign moderators and students to their time slots
-    (mods_assigned_to_times, students_assigned_to_times) = assignModeratorsAndStudents(config.mod_doodle_poll_csv_path,
-                                                                                       config.mod_max_sections_csv_path,
-                                                                                       config.student_doodle_poll_csv_path)
+    csv_files = (config.mod_doodle_poll_csv_path, config.mod_max_sections_csv_path,
+                 config.student_doodle_poll_csv_path, config.section_times_csv_path)
+    (mods_assigned_to_times, students_assigned_to_times) = assignModeratorsAndStudents(*csv_files)
+
     # Assign moderators and students to sections within their assigned time slots
     assert len(mods_assigned_to_times) == len(students_assigned_to_times)
     section_assignments = assignSectionsFromSectionTimes(mods_assigned_to_times, students_assigned_to_times)
@@ -26,8 +27,7 @@ def write_sections_to_csv(section_assignments, mod_net_id_to_name_dict):
             mod_net_id_to_name_dict: A dictionary mapping from moderator NetID to moderator name
     """
     # Read the names for the section times like "Wednesday 10 AM - 12 PM" into a list
-    with open(config.section_times_csv_path, 'r', encoding='utf-8-sig') as section_times_file:
-        times = list(csv.reader(section_times_file))
+    (times, _) = readSectionTimeInfo(config.section_times_csv_path)
 
     # Write the section assignments to the final output csv path
     with open(config.output_csv_path, 'w+', encoding='utf-8-sig') as output_file:

@@ -1,7 +1,7 @@
 import time
 import config
-from csv_input import readDoodlePreferences, readModMaxSectionPreferences
 from ortools.sat.python import cp_model
+from csv_input import readDoodlePreferences, readModMaxSectionPreferences, readSectionTimeInfo
 
 DOODLE_PREFERRED_TIME = 'OK'
 DOODLE_NOT_PREFERRED_TIME = '(OK)'
@@ -35,12 +35,15 @@ class PersonTimeVariableWrapper:
         """
         return (solver.Value(self.variable) != 0)
 
-def assignModeratorsAndStudents(mod_doodle_poll_csv_path, mod_max_section_csv_path, student_doodle_poll_csv_path):
+def assignModeratorsAndStudents(mod_doodle_poll_csv_path, mod_max_section_csv_path, student_doodle_poll_csv_path,
+                                section_times_csv_path=None):
     """
         Args:
             mod_doodle_poll_csv_path: The file path to the Doodle poll for the moderators in .csv format
             mod_max_section_csv_path: The file path to the max sections .csv file
             student_doodle_poll_csv_path: The file path to the Doodle poll for the students in .csv format
+            section_times_csv_path: The file path to the .csv file containing info on section times and rooms
+                                    available for each time. If None, 3 rooms per time is assumed
 
         Returns:
             mods_assigned_to_times: List of List of Strings, each entry is all net IDs of the moderators assigned
@@ -58,6 +61,11 @@ def assignModeratorsAndStudents(mod_doodle_poll_csv_path, mod_max_section_csv_pa
                                                              mod_time_preferences, True)
     student_time_variables = setupConstraintProgrammingVariables(model, student_net_ids,
                                                                  student_time_preferences, False)
+
+    num_section_times = len(mod_time_variables[0])
+    max_sections_per_time = [3] * num_section_times
+    if section_times_csv_path != None:
+        (_, max_sections_per_time) = readSectionTimeInfo(section_times_csv_path)
 
     var_count = 0
     num_mods = len(mod_net_ids)
@@ -80,9 +88,9 @@ def assignModeratorsAndStudents(mod_doodle_poll_csv_path, mod_max_section_csv_pa
     print('Num person/time variables:', var_count)
 
     addMaxSectionsPerModConstraint(model, mod_time_variables, max_sections_per_mod)
-    addMaxSectionsPerSectionTimeConstraint(model, mod_time_variables)
+    addMaxSectionsPerSectionTimeConstraint(model, mod_time_variables, max_sections_per_time)
     addSectionsPerStudentConstraint(model, student_time_variables)
-    addStudentsPerSectionTimeConstraint(model, mod_time_variables, student_time_variables)
+    addStudentsPerSectionTimeConstraint(model, mod_time_variables, student_time_variables, max_sections_per_time)
     addFunctionToMinimize(model, mod_time_variables, student_time_variables)
 
     # Kick off the solver, and verify an optimal solution exists
@@ -153,26 +161,21 @@ def addMaxSectionsPerModConstraint(model, mod_time_variables, max_sections_per_m
             model.Add(1 <= all_time_vars_for_mod)
             model.Add(all_time_vars_for_mod <= max_sections_per_mod[mod_index])
 
-def addMaxSectionsPerSectionTimeConstraint(model, mod_time_variables):
+def addMaxSectionsPerSectionTimeConstraint(model, mod_time_variables, max_sections_per_time):
     """
         Adds the constraint that the number of moderators assigned to a section time must be
             less than or equal to the maximum sections that can happen at that time. This is
-            usually bounded by the number of rooms available (assumed to be 3 for now)
+            usually bounded by the number of rooms available (3 for every time by default)
 
         Args:
             model: The CpModel object that represents the constraints of the problem
             mod_time_variables: 2D List of PersonTimeVariableWrapper, if [mod_index][time_index]
                                     is None then that time is impossible for that mod
+            max_sections_per_time: List of Integer where each index represents the number of rooms
+                                    available at that time index
     """
     num_mods = len(mod_time_variables)
     num_section_times = len(mod_time_variables[0])
-    max_sections_per_time = [3] * num_section_times
-
-    if config.semester_has_fourth_room:
-        # We have a fourth room on Wednesday from 12 PM to 6 PM
-        max_sections_per_time[1] = 4
-        max_sections_per_time[2] = 4
-        max_sections_per_time[3] = 4
 
     for time_index in range(num_section_times):
         all_mod_vars_for_time = sum([mod_time_variables[mod_index][time_index].variable
@@ -201,7 +204,7 @@ def addSectionsPerStudentConstraint(model, student_time_variables):
 
         model.Add(all_student_vars_for_time == 1)
 
-def addStudentsPerSectionTimeConstraint(model, mod_time_variables, student_time_variables):
+def addStudentsPerSectionTimeConstraint(model, mod_time_variables, student_time_variables, max_sections_for_times):
     """
         This is where things get complicated and why linear programming cannot solve the system as a whole
         A little about constraint programming: It's an NP hard problem, so on some level it is just trying
@@ -228,18 +231,13 @@ def addStudentsPerSectionTimeConstraint(model, mod_time_variables, student_time_
             student_time_variables: 2D List of PersonTimeVariableWrapper,
                                         if [student_index][time_index] is None then
                                         that time is impossible for that student
+            max_sections_for_times: List of Integer where each index represents the number of rooms
+                                    available at that time index
     """
     num_mods = len(mod_time_variables)
     num_students = len(student_time_variables)
     num_section_times = len(mod_time_variables[0])
     num_decision_vars = 0
-    max_sections_for_times = [3] * num_section_times
-
-    if config.semester_has_fourth_room:
-        # We have a fourth room on Wednesday from 12 PM to 6 PM
-        max_sections_for_times[1] = 4
-        max_sections_for_times[2] = 4
-        max_sections_for_times[3] = 4
 
     for time_index in range(num_section_times):
         max_sections_for_time = max_sections_for_times[time_index]
@@ -255,6 +253,8 @@ def addStudentsPerSectionTimeConstraint(model, mod_time_variables, student_time_
             continue # This time index will never have a section
 
         # Need to create decision variables for the possible number of mods in this time beforehand
+        # A decision variable can take two values: 0 or 1, where 1 indicates the "decision" was taken
+        #  corresponding to whatever path of other variable constraints the decision variable represents
         num_sections_decision_vars = []
         for _ in range(max_sections_for_time + 1):
             num_sections_decision_vars.append(model.NewBoolVar('decision' + str(num_decision_vars)))
