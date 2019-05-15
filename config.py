@@ -20,7 +20,7 @@ output_csv_path = 'sp19_final_assignments.csv'
 
 # The file path to a CSV with [section time] on each line specifying all available section time slots
 # These times MUST be the exact same and in the exact same order as the mod and student Doodle polls
-section_times_csv_path = 'sp19_full_data/section_times.csv'
+section_times_csv_path = 'sp19_full_data/sp19_section_times.csv'
 
 
 # When this is True, all moderators will be assigned to exactly their maximum amount of sections

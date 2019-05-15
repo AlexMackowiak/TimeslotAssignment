@@ -78,3 +78,32 @@ def readModMaxSectionPreferences(max_sections_csv_path, mod_net_ids):
 
     assert all_mods_accounted_for
     return max_sections_per_mod
+
+def readModNetIDToNameMapping(mod_net_id_to_name_csv_path, mod_net_id_error_check):
+    """
+        Args:
+            mod_net_id_to_name_csv_path: The file path to the CSV file containing
+                                            the mod net ID to mod name mapping
+            mod_net_id_error_check: if True, some basic error checking is performed and will
+                                    print to console in the likely event that it finds a Net ID
+                                    which does not conform to the validation criteria
+
+        Returns: A dictionary with the mapping for each mod net ID to the moderator's name
+    """
+    mod_net_id_to_name_dict = {}
+
+    with open(mod_net_id_to_name_csv_path, 'r', encoding='utf-8-sig') as mapping_file:
+        for entry in csv.reader(mapping_file):
+            net_id = entry[0]
+            name = entry[1]
+
+            # Do some rudimentary error checking, SP19 had two mods with flipped Net IDs
+            if mod_net_id_error_check:
+                (first_name, last_name) = name.lower().split(' ', 1)
+                if (net_id[0] != first_name[0]) and (net_id[0] != last_name[0]):
+                    print('Warning: Net ID ' + net_id + ' does not appear to correspond to ' + name,
+                          'please double check this')
+
+            mod_net_id_to_name_dict[net_id] = name
+
+    return mod_net_id_to_name_dict

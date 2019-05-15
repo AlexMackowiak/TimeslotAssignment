@@ -1,6 +1,6 @@
 import time
 import config
-from preference_input import readDoodlePreferences, readModMaxSectionPreferences
+from csv_input import readDoodlePreferences, readModMaxSectionPreferences
 from ortools.sat.python import cp_model
 
 DOODLE_PREFERRED_TIME = 'OK'
