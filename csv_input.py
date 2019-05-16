@@ -79,7 +79,7 @@ def readModMaxSectionPreferences(max_sections_csv_path, mod_net_ids):
     assert all_mods_accounted_for
     return max_sections_per_mod
 
-def readModNetIDToNameMapping(mod_net_id_to_name_csv_path, mod_net_id_error_check):
+def readModNetIDToNameMapping(mod_net_id_to_name_csv_path, mod_net_id_error_check=True):
     """
         Args:
             mod_net_id_to_name_csv_path: The file path to the CSV file containing

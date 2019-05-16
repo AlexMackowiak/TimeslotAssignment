@@ -1,5 +1,5 @@
 import unittest
-from csv_input import readDoodlePreferences, readModMaxSectionPreferences
+from csv_input import *
 
 class TestInput(unittest.TestCase):
     """ Tests related to reading input from CSV formats """
@@ -43,3 +43,20 @@ class TestInput(unittest.TestCase):
 
         self.assertEqual(net_ids, expected_net_ids)
         self.assertEqual(time_preferences, expected_time_preferences)
+
+    def test_read_mod_net_id_name_mapping(self):
+        mod_net_id_to_names_csv_path = 'test_data/different_num_rooms/mod_net_ids_to_names.csv'
+        mod_net_id_name_mapping = readModNetIDToNameMapping(mod_net_id_to_names_csv_path, False)
+
+        expected_mapping = {'amackow2':'Alex Mackowiak', 'ssolank2':'Shachi Solanki', 'arnavs3':'Arnav Sankaran',
+                            'ysharma5':'Yash Sharma', 'albertl3':'Albert Li'}
+        self.assertEqual(mod_net_id_name_mapping, expected_mapping)
+
+    def test_read_section_times_info(self):
+        section_times_csv_path = 'test_data/different_num_rooms/section_times.csv'
+        (section_times, num_rooms_in_each_time)  = readSectionTimeInfo(section_times_csv_path)
+
+        expected_times = ['(Time 1)', '(Time 2)', '(Time 3)']
+        expected_num_rooms = [5, 2, 1]
+        self.assertEqual(section_times, expected_times)
+        self.assertEqual(num_rooms_in_each_time, expected_num_rooms)

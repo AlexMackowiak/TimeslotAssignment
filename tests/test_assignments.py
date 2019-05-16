@@ -9,7 +9,6 @@ class TestAssignments(unittest.TestCase):
     def setUp(self):
         # Ensure that config options are correct for testing
         config.assign_exact_max_sections = False
-        config.semester_has_fourth_room = False
 
     def test_basic_functionality(self):
         """ Tests that the only possible assignments are made for a trivial case """
@@ -83,14 +82,36 @@ class TestAssignments(unittest.TestCase):
 
         self.verify_assignments(test_data_dir, expected_mod_assignments, expected_student_assignments)
 
-    def verify_assignments(self, test_data_dir, expected_mod_assignments, expected_student_assignments):
+    def test_different_num_rooms(self):
+        """ Tests that assignments can be maded with different numbers of rooms at each time """
+        test_data_dir = 'test_data/different_num_rooms/'
+        expected_mod_assignments = [['amackow2', 'ssolank2', 'arnavs3', 'ysharma5', 'albertl3'],
+                                    ['amackow2', 'ssolank2'],
+                                    ['amackow2']]
+        expected_student_assignments = [['a1', 'a2', 'a3', 'a4', 'a5',
+                                         'b1', 'b2', 'b3', 'b4', 'b5', 'b6',
+                                         'c1', 'c2', 'c3', 'c4', 'c5',
+                                         'd1', 'd2', 'd3', 'd4', 'd5', 'd6',
+                                         'e1', 'e2', 'e3', 'e4', 'e5'],
+                                        ['f1', 'f2', 'f3', 'f4', 'f5', 'f6',
+                                         'g1', 'g2', 'g3', 'g4', 'g5', 'g6'],
+                                        ['h1', 'h2', 'h3', 'h4', 'h5']]
+
+        self.verify_assignments(test_data_dir, expected_mod_assignments, expected_student_assignments,
+                                non_standard_rooms=True)
+
+    def verify_assignments(self, test_data_dir, expected_mod_assignments, expected_student_assignments,
+                           non_standard_rooms=False):
+        # Set up paths to CSV files for this test
         mod_doodle_poll_csv_path = (test_data_dir + 'mod_preferences.csv')
         mod_max_sections_csv_path = (test_data_dir + 'mod_max_sections.csv')
         student_doodle_poll_csv_path = (test_data_dir + 'student_preferences.csv')
-        (mods_assigned_to_times, 
-         students_assigned_to_times) = assignModeratorsAndStudents(mod_doodle_poll_csv_path,
-                                                                   mod_max_sections_csv_path,
-                                                                   student_doodle_poll_csv_path)
+        section_times_csv_path = (test_data_dir + 'section_times.csv') if non_standard_rooms else None
+
+        # Call the section assigner
+        csv_files = (mod_doodle_poll_csv_path, mod_max_sections_csv_path,
+                     student_doodle_poll_csv_path, section_times_csv_path)
+        (mods_assigned_to_times, students_assigned_to_times) = assignModeratorsAndStudents(*csv_files)
 
         # No guarantee on the order returned within the time index of the assignment
         for time_index in range(len(mods_assigned_to_times)):
@@ -99,10 +120,12 @@ class TestAssignments(unittest.TestCase):
             expected_mods_in_time = expected_mod_assignments[time_index]
             expected_students_in_time = expected_student_assignments[time_index]
 
+            # Verify the mods in each time are expected
             self.assertEqual(len(actual_mods_in_time), len(expected_mods_in_time))
             for mod_assigned_to_time in actual_mods_in_time:
                 self.assertIn(mod_assigned_to_time, expected_mods_in_time)
 
+            # Verify the students in each time are expected
             self.assertEqual(len(actual_students_in_time), len(expected_students_in_time))
             for student_assigned_to_time in actual_students_in_time:
                 self.assertIn(student_assigned_to_time, expected_students_in_time)
