@@ -67,6 +67,24 @@ def assignModeratorsAndStudents(mod_doodle_poll_csv_path, mod_max_section_csv_pa
     if section_times_csv_path != None:
         (_, max_sections_per_time) = readSectionTimeInfo(section_times_csv_path)
 
+    printProblemInfo(mod_net_ids, student_net_ids, mod_time_preferences, student_time_variables, mod_time_variables)
+    addMaxSectionsPerModConstraint(model, mod_time_variables, max_sections_per_mod)
+    addMaxSectionsPerSectionTimeConstraint(model, mod_time_variables, max_sections_per_time)
+    addSectionsPerStudentConstraint(model, student_time_variables)
+    addStudentsPerSectionTimeConstraint(model, mod_time_variables, student_time_variables, max_sections_per_time)
+    addFunctionToMinimize(model, mod_time_variables, student_time_variables)
+
+    # Kick off the solver, and verify an optimal solution exists
+    solver = cp_model.CpSolver()
+    solution_counter = SolutionCounter()
+    status = solver.SolveWithSolutionCallback(model, solution_counter)
+    print(solver.StatusName(status))
+    print("Solutions considered:", solution_counter.solution_count)
+    assert (status == cp_model.OPTIMAL) # or (status == cp_model.FEASIBLE)
+    return extractModAndStudentAssignments(solver, mod_time_variables, student_time_variables)
+
+def printProblemInfo(mod_net_ids, student_net_ids, mod_time_preferences,
+                     student_time_variables, mod_time_variables):
     var_count = 0
     num_mods = len(mod_net_ids)
     num_students = len(student_net_ids)
@@ -86,21 +104,6 @@ def assignModeratorsAndStudents(mod_doodle_poll_csv_path, mod_max_section_csv_pa
     print('Num students:', num_students)
     print('Num section times:', num_section_times)
     print('Num person/time variables:', var_count)
-
-    addMaxSectionsPerModConstraint(model, mod_time_variables, max_sections_per_mod)
-    addMaxSectionsPerSectionTimeConstraint(model, mod_time_variables, max_sections_per_time)
-    addSectionsPerStudentConstraint(model, student_time_variables)
-    addStudentsPerSectionTimeConstraint(model, mod_time_variables, student_time_variables, max_sections_per_time)
-    addFunctionToMinimize(model, mod_time_variables, student_time_variables)
-
-    # Kick off the solver, and verify an optimal solution exists
-    solver = cp_model.CpSolver()
-    solution_counter = SolutionCounter()
-    status = solver.SolveWithSolutionCallback(model, solution_counter)
-    print(solver.StatusName(status))
-    print("Solutions considered:", solution_counter.solution_count)
-    assert (status == cp_model.OPTIMAL) # or (status == cp_model.FEASIBLE)
-    return extractModAndStudentAssignments(solver, mod_time_variables, student_time_variables)
 
 def setupConstraintProgrammingVariables(model, net_ids, time_preferences, is_mod_data):
     """
