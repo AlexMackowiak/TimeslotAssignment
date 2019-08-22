@@ -1,0 +1,49 @@
+How to go from cloning this repository to section assignments:
+
+1. Set up your local python environment, instructions are in ./environment_setup/environment_setup.txt
+    a. Alternatively, it's less clean, but a virtual environment is not strictly necessary
+
+2. View config.py to keep in mind a list of files needed to run this program, you will need at minimum 5 files:
+    a. A student Doodle poll responses .csv file
+    b. A moderator Doodle poll responses .csv file
+    c. A .csv file mapping moderators to the maximum number of sections they will take
+    d. A .csv file mapping each moderator NetID to the moderator's name
+    e. A .csv file mapping section day/times to the number of rooms available at that time
+        TODO: Allow different rooms at different times
+    f. You can look at the ./test_data/sp19_data/ and ./sp19_full_data/ directories for examples
+
+3. Create the student and moderator Doodle polls. Code reviews are 2 hours each, talk with the professor to find out the semester's valid days.
+    Take care to ensure that the student and moderator polls have the same section times.
+    Having a gap in times (e.g. only one lecture time -> no reviews should happen then) is no issue as long as the sections .csv reflects this.    
+    Ensure the students and moderators know that assignments are prioritized on a first-come first-serve basis.
+
+4. Do not use raw Doodle poll data. It will contain duplicate entries, and useless formatting at the start and end.
+    Instead, feed the raw Doodle poll .csv to ./scripts/preprocess_doodle_poll.py and use the output as the student/moderator Doodle polls
+
+5. Try to emphasize, as much as possible, that the student and moderator polls should be filled out with NetIDs.
+    When people inevitably can't read (happens every semester), preprocess_doodle_poll.py can take an optional parameter of a .csv file mapping
+    the student or moderator name they gave in the Doodle poll to the student or moderator's NetID. The script will apply this mapping during processing
+
+Optional: If you have a class roster, you can run ./scripts/find_net_ids_not_in_poll.py on a processed Doodle poll to know who has to fill it out
+
+6. Set up the config file to point to your new files instead of a previous semester's
+
+7. Run assign_sections.py which should output a .csv file of each student's assignment with moderator, room, and time
+
+8. Verify the mapping works for everyone by posting it to moderators. Make manual adjustments as necessary if times no longer work for them, or if
+    there are any conflicts of interest where a moderator knows a student.
+
+9. Run ./scripts/email_students.py to send out the final assignments
+    TODO: Make the email script take parameters
+
+Computation times longer than 60 seconds are abnormal. This problem is NP-hard so those times unfortunately indicate it will likely take days to finish.
+This is very unlikely to be an issue in the fall semester with significantly less data, but is a very real problem in spring semesters.
+How to deal with that?
+Doctoring the data: 
+    Create a copy of the student doodle poll responses, and delete "(OK)" yellow entries for the first N students. N should be relatively large,
+    but not large enough to make finding a solution infeasible. This still preserves the promise we make to students of first come first serve,
+    just in a more direct way. The chosen objective function should ideally enforce first come first serve on students after the first N, but this
+	may not be computationally feasible.
+
+Alternatively, using a simplified objective function can vastly decrease computation times.
+SP19 used data doctoring with N = 100 and the "everyone_equal_weight" objective function to finish in ~15 seconds.

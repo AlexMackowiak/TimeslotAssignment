@@ -1,3 +1,5 @@
+import objective_functions # Need to specify objective function in config
+objective_function = objective_functions.everyone_equal_weight
 
 # The locations of the mod and student preference CSV files
 semester_data_directory = 'test_data/sp19_data/'
@@ -29,5 +31,5 @@ section_times_csv_path = 'sp19_full_data/sp19_section_times.csv'
 #  exact maximum amount of sections, so it will require manual fine tuning of the preferences file
 assign_exact_max_sections = True
 
-# When True, will do some simple checking to see if the mod's net ID roughly corresponds to their name
+# When True, will do some simple error checking to see if every mod's net ID roughly corresponds to their name
 mod_net_id_error_check = True

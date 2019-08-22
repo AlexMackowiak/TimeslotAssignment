@@ -298,7 +298,7 @@ def addStudentsPerSectionTimeConstraint(model, mod_time_variables, student_time_
 def addFunctionToMinimize(model, mod_time_variables, student_time_variables):
     """
         Adds the objective function to minimize to the model
-        This is currently just a basic implementation weighting all not preferred times the same
+        The objective function that gets added is specified in the config file.
 
         Args:
             model: The CpModel object that represents the constraints of the problem
@@ -317,15 +317,13 @@ def addFunctionToMinimize(model, mod_time_variables, student_time_variables):
         for mod_index in range(num_mods):
             mod_time_var_wrapper = mod_time_variables[mod_index][time_index]
             if mod_time_var_wrapper is not None and not mod_time_var_wrapper.is_preferred_time:
-                #coefficient = ((MAX_STUDENTS_PER_SECTION + 1) * num_students) + (num_mods - mod_index)
-                coefficient = 1
+                coefficient = config.objective_function(num_mods, num_students, mod_index, True)
                 not_preferred_variables.append(coefficient * mod_time_var_wrapper.variable)
 
         for student_index in range(num_students):
             student_time_var_wrapper = student_time_variables[student_index][time_index]
             if student_time_var_wrapper is not None and not student_time_var_wrapper.is_preferred_time:
-                #coefficient = (num_students - student_index)
-                coefficient = 1
+                coefficient = config.objective_function(num_mods, num_students, student_index, False)
                 not_preferred_variables.append(coefficient * student_time_var_wrapper.variable)
 
     model.Minimize(sum(not_preferred_variables))
