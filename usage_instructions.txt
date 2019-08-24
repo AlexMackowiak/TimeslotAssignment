@@ -8,8 +8,7 @@ How to go from cloning this repository to section assignments:
     b. A moderator Doodle poll responses .csv file
     c. A .csv file mapping moderators to the maximum number of sections they will take
     d. A .csv file mapping each moderator NetID to the moderator's name
-    e. A .csv file mapping section day/times to the number of rooms available at that time
-        TODO: Allow different rooms at different times
+    e. A .csv file mapping section day/times to the rooms available at that time
     f. You can look at the ./test_data/sp19_data/ and ./sp19_full_data/ directories for examples
 
 3. Create the student and moderator Doodle polls. Code reviews are 2 hours each, talk with the professor to find out the semester's valid days.

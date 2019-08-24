@@ -17,12 +17,13 @@ student_doodle_poll_csv_path = semester_data_directory + 'student_preferences.cs
 # The file path to a CSV with [mod net ID],[mod name] format
 mod_net_id_to_name_csv_path = 'sp19_full_data/sp19_mod_net_ids_to_names.csv'
 
-# The file path for where to write the final section assignment output CSV
-output_csv_path = 'sp19_final_assignments.csv'
-
-# The file path to a CSV with [section time] on each line specifying all available section time slots
+# The file path to a CSV with format [section time],[(room 1 name:max sections)],...,[(room N name:max sections)]
+# For example: "Wednesday 10 AM - 12 PM,(Siebel 1112:2),(Siebel 1314:1),(Siebel 4102:1)"
 # These times MUST be the exact same and in the exact same order as the mod and student Doodle polls
 section_times_csv_path = 'sp19_full_data/sp19_section_times.csv'
+
+# The file path for where to write the final section assignment output CSV
+output_csv_path = 'sp19_final_assignments.csv'
 
 
 # When this is True, all moderators will be assigned to exactly their maximum amount of sections

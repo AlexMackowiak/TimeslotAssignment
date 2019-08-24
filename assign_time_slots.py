@@ -65,7 +65,9 @@ def assignModeratorsAndStudents(mod_doodle_poll_csv_path, mod_max_section_csv_pa
     num_section_times = len(mod_time_variables[0])
     max_sections_per_time = [3] * num_section_times
     if section_times_csv_path != None:
-        (_, max_sections_per_time) = readSectionTimeInfo(section_times_csv_path)
+        (_, rooms_in_each_time) = readSectionTimeInfo(section_times_csv_path)
+        max_sections_per_time = [sum(room_at_time.max_sections for room_at_time in rooms_in_each_time[time_index])
+                                 for time_index in range(num_section_times)]
 
     printProblemInfo(mod_net_ids, student_net_ids, mod_time_preferences, student_time_variables, mod_time_variables)
     addMaxSectionsPerModConstraint(model, mod_time_variables, max_sections_per_mod)

@@ -54,9 +54,11 @@ class TestInput(unittest.TestCase):
 
     def test_read_section_times_info(self):
         section_times_csv_path = 'test_data/different_num_rooms/section_times.csv'
-        (section_times, num_rooms_in_each_time)  = readSectionTimeInfo(section_times_csv_path)
+        (section_times, rooms_in_each_time)  = readSectionTimeInfo(section_times_csv_path)
 
         expected_times = ['(Time 1)', '(Time 2)', '(Time 3)']
-        expected_num_rooms = [5, 2, 1]
+        expected_rooms = [[RoomAtTime('Room 1', 2), RoomAtTime('Room 2', 2), RoomAtTime('Room 3', 1)],
+                          [RoomAtTime('Room 1', 2)],
+                          [RoomAtTime('Room 3', 1)]]
         self.assertEqual(section_times, expected_times)
-        self.assertEqual(num_rooms_in_each_time, expected_num_rooms)
+        self.assertEqual(rooms_in_each_time, expected_rooms)

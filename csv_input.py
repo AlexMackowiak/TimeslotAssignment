@@ -23,6 +23,7 @@ def readDoodlePreferences(doodle_poll_csv_path):
 
     with open(doodle_poll_csv_path, 'r', encoding='utf-8-sig') as pref_file:
         for preference_entry in csv.reader(pref_file):
+            assert (len(preference_entry) >= 2)
             net_id = preference_entry[0]
             time_preferences = preference_entry[1:]
 
@@ -59,6 +60,7 @@ def readModMaxSectionPreferences(max_sections_csv_path, mod_net_ids):
 
     with open(max_sections_csv_path, 'r', encoding='utf-8-sig') as max_sections_csv:
         for entry in csv.reader(max_sections_csv):
+            assert (len(entry) == 2)
             net_id = entry[0]
             max_sections = int(entry[1])
 
@@ -94,10 +96,11 @@ def readModNetIDToNameMapping(mod_net_id_to_name_csv_path, mod_net_id_error_chec
 
     with open(mod_net_id_to_name_csv_path, 'r', encoding='utf-8-sig') as mapping_file:
         for entry in csv.reader(mapping_file):
+            assert (len(entry) == 2)
             net_id = entry[0]
             name = entry[1]
 
-            # Do some rudimentary error checking, SP19 had two mods with flipped Net IDs
+            # Do some rudimentary error checking, SP19 had two mods with flipped NetIDs
             if mod_net_id_error_check:
                 (first_name, last_name) = name.lower().split(' ', 1)
                 if (net_id[0] != first_name[0]) and (net_id[0] != last_name[0]):
@@ -108,23 +111,55 @@ def readModNetIDToNameMapping(mod_net_id_to_name_csv_path, mod_net_id_error_chec
 
     return mod_net_id_to_name_dict
 
+
+class RoomAtTime:
+    def __init__(self, name, max_sections):
+        self.name = name
+        self.max_sections = max_sections
+
+    def __eq__(self, other):
+        return isinstance(other, RoomAtTime) and \
+                (self.name == other.name) and \
+                (self.max_sections == other.max_sections)
+
+    def __ne__(self, other):
+        return not (self == other)
+
+    def __str__(self):
+        return '({}, {})'.format(self.name, self.max_sections)
+
 def readSectionTimeInfo(section_time_csv_path):
     """
         Args:
-            section_time_csv_path: The file path to a CSV file with [section time],[num rooms at time]
-                                    format. Example: "Wednesday 10 AM - 12 PM,4"
+            section_time_csv_path: The file path to a CSV file with format
+                                    [section time],[(room 1 name:max sections)],...,[(room N name:max sections)]
+                                    Example: "Wednesday 10 AM - 12 PM,(Siebel 1112:2),(Siebel 1314:1),(Siebel 4102:1)"
 
         Returns:
             section_times: List of String where each index is the description of the section time
-            num_rooms_in_each_time: List of Integer where each index is the number of rooms
-                                    available at that time index
+            rooms_in_each_time: List where the entry at each time index is a tuple of
+                                    (room name, max sections at that time)
     """
     section_times = []
-    num_rooms_in_each_time = []
+    rooms_in_each_time = []
 
     with open(section_time_csv_path, 'r', encoding='utf-8-sig') as section_time_file:
         for entry in csv.reader(section_time_file):
+            assert (len(entry) >= 2)
             section_times.append(entry[0])
-            num_rooms_in_each_time.append(int(entry[1]))
 
-    return section_times, num_rooms_in_each_time
+            rooms_in_this_time = []
+            for room_entry in entry[1:]:
+                # Ensure the entry consists of (room_name:max_sections)
+                colon_index = room_entry.find(':')
+                assert (colon_index > 1)
+                assert (colon_index < (len(room_entry) - 2))
+
+                # Parse the (room_name, max_sections) tuple
+                room_name = room_entry[1:colon_index]
+                max_sections_in_room = int(room_entry[colon_index+1:-1])
+                assert (max_sections_in_room >= 1)
+                rooms_in_this_time.append(RoomAtTime(room_name, max_sections_in_room))
+            rooms_in_each_time.append(rooms_in_this_time)
+
+    return section_times, rooms_in_each_time

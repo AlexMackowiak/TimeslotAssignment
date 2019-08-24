@@ -1,20 +1,20 @@
-Wednesday 10 AM - 12 PM,3
-Wednesday 12 PM - 2 PM,4
-Wednesday 2 PM - 4 PM,4
-Wednesday 4 PM - 6 PM,4
-Wednesday 6 PM - 8 PM,3
-Thursday 10 AM - 12 PM,3
-Thursday 12 PM - 2 PM,3
-Thursday 2 PM - 4 PM,3
-Thursday 4 PM - 6 PM,3
-Thursday 6 PM - 8 PM,3
-Friday 10 AM - 12 PM,3
-Friday 12 PM - 2 PM,3
-Friday 2 PM - 4 PM,3
-Friday 4 PM - 6 PM,3
-Friday 6 PM - 8 PM,3
-Saturday 10 AM - 12 PM,3
-Saturday 12 PM - 2 PM,3
-Saturday 2 PM - 4 PM,3
-Saturday 4 PM - 6 PM,3
-Saturday 6 PM - 8 PM,3
+Wednesday 10 AM - 12 PM,(Siebel 1112:2),(Siebel 1314:1)
+Wednesday 12 PM - 2 PM,(Siebel 1112:2),(Siebel 1314:1),(Siebel 4102:1)
+Wednesday 2 PM - 4 PM,(Siebel 1112:2),(Siebel 1314:1),(Siebel 4102:1)
+Wednesday 4 PM - 6 PM,(Siebel 1112:2),(Siebel 1314:1),(Siebel 4102:1)
+Wednesday 6 PM - 8 PM,(Siebel 1112:2),(Siebel 1314:1)
+Thursday 10 AM - 12 PM,(Siebel 1112:2),(Siebel 1314:1)
+Thursday 12 PM - 2 PM,(Siebel 1112:2),(Siebel 1314:1)
+Thursday 2 PM - 4 PM,(Siebel 1112:2),(Siebel 1314:1)
+Thursday 4 PM - 6 PM,(Siebel 1112:2),(Siebel 1314:1)
+Thursday 6 PM - 8 PM,(Siebel 1112:2),(Siebel 1314:1)
+Friday 10 AM - 12 PM,(Siebel 1112:2),(Siebel 1314:1)
+Friday 12 PM - 2 PM,(Siebel 1112:2),(Siebel 1314:1)
+Friday 2 PM - 4 PM,(Siebel 1112:2),(Siebel 1314:1)
+Friday 4 PM - 6 PM,(Siebel 1112:2),(Siebel 1314:1)
+Friday 6 PM - 8 PM,(Siebel 1112:2),(Siebel 1314:1)
+Saturday 10 AM - 12 PM,(Siebel 1112:2),(Siebel 1314:1)
+Saturday 12 PM - 2 PM,(Siebel 1112:2),(Siebel 1314:1)
+Saturday 2 PM - 4 PM,(Siebel 1112:2),(Siebel 1314:1)
+Saturday 4 PM - 6 PM,(Siebel 1112:2),(Siebel 1314:1)
+Saturday 6 PM - 8 PM,(Siebel 1112:2),(Siebel 1314:1)
