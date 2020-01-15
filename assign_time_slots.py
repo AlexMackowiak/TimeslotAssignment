@@ -255,7 +255,10 @@ def addStudentsPerSectionTimeConstraint(model, mod_time_variables, student_time_
                             if student_time_variables[student_index][time_index] is not None]
 
         if (len(mods_in_time) == 0) or (len(students_in_time) == 0):
-            continue # This time index will never have a section
+            # This time index should never allow a section
+            model.Add(sum(mods_in_time) == 0)
+            model.Add(sum(students_in_time) == 0)
+            continue
 
         # Need to create decision variables for the possible number of mods in this time beforehand
         # A decision variable can take two values: 0 or 1, where 1 indicates the "decision" was taken
@@ -373,7 +376,6 @@ def extractModAndStudentAssignments(solver, mod_time_variables, student_time_var
 
     print('Mods assigned to not preferred time: ' + str(num_not_preferred_mod_times))
     print('Students assigned to not preferred time: ' + str(num_not_preferred_student_times))
-
     return mods_assigned_to_times, students_assigned_to_times
 
 def currentMillis():

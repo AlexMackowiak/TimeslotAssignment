@@ -2,6 +2,7 @@ import unittest
 import config
 from assign_time_slots import assignModeratorsAndStudents
 from csv_input import readDoodlePreferences, readModMaxSectionPreferences
+TEST_DATA_PREFIX = 'test_data/assignment_test_data/'
 
 class TestAssignments(unittest.TestCase):
     """ Tests that assignment works correctly """
@@ -12,7 +13,7 @@ class TestAssignments(unittest.TestCase):
 
     def test_basic_functionality(self):
         """ Tests that the only possible assignments are made for a trivial case """
-        test_data_dir = 'test_data/basic_functionality/'
+        test_data_dir = TEST_DATA_PREFIX + 'basic_functionality/'
         expected_mod_assignments = [['amackow2'],
                                     ['albertl3'],
                                     ['ysharma5']]
@@ -24,7 +25,7 @@ class TestAssignments(unittest.TestCase):
 
     def test_two_sections_one_mod(self):
         """ Tests that a moderator can be assigned multiple sections with the right preferences """
-        test_data_dir = 'test_data/two_sections_one_mod/'
+        test_data_dir = TEST_DATA_PREFIX + 'two_sections_one_mod/'
         expected_mod_assignments = [['amackow2'],
                                     ['albertl3'],
                                     ['ysharma5'],
@@ -38,7 +39,7 @@ class TestAssignments(unittest.TestCase):
 
     def test_four_sections_one_aamir(self):
         """ Tests a moderator can be assigned to many sections """
-        test_data_dir = 'test_data/four_sections_one_aamir/'
+        test_data_dir = TEST_DATA_PREFIX + 'four_sections_one_aamir/'
         expected_mod_assignments = [['aamirh2'],
                                     ['aamirh2'],
                                     ['albertl3'],
@@ -56,7 +57,7 @@ class TestAssignments(unittest.TestCase):
 
     def test_three_mods_one_section_time(self):
         """ Tests that multiple moderators can be assigned to a section time """
-        test_data_dir = 'test_data/three_mods_one_section_time/'
+        test_data_dir = TEST_DATA_PREFIX + 'three_mods_one_section_time/'
         expected_mod_assignments = [['ssolank2', 'ztan19', 'amackow2'],
                                     ['bzinn2'],
                                     ['pjg4']]
@@ -70,7 +71,7 @@ class TestAssignments(unittest.TestCase):
 
     def test_chooses_preferred_times(self):
         """ Tests that no not preferred times are chosen when a solution exists without them """
-        test_data_dir = 'test_data/chooses_preferred_times/'
+        test_data_dir = TEST_DATA_PREFIX + 'chooses_preferred_times/'
         expected_mod_assignments = [['amackow2'],
                                     ['albertl3'],
                                     ['ysharma5'],
@@ -84,7 +85,7 @@ class TestAssignments(unittest.TestCase):
 
     def test_different_num_rooms(self):
         """ Tests that assignments can be maded with different numbers of rooms at each time """
-        test_data_dir = 'test_data/different_num_rooms/'
+        test_data_dir = TEST_DATA_PREFIX + 'different_num_rooms/'
         expected_mod_assignments = [['amackow2', 'ssolank2', 'arnavs3', 'ysharma5', 'albertl3'],
                                     ['amackow2', 'ssolank2'],
                                     ['amackow2']]

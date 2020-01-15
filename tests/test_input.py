@@ -1,11 +1,12 @@
 import unittest
 from csv_input import *
+TEST_DATA_PREFIX = 'test_data/assignment_test_data/'
 
 class TestInput(unittest.TestCase):
     """ Tests related to reading input from CSV formats """
 
     def test_read_mod_doodle_poll(self):
-        mod_doodle_poll_csv_path = 'test_data/basic_functionality/mod_preferences.csv'
+        mod_doodle_poll_csv_path = TEST_DATA_PREFIX + 'basic_functionality/mod_preferences.csv'
         (mod_net_ids, mod_time_preferences) = readDoodlePreferences(mod_doodle_poll_csv_path)
 
         expected_net_ids = ['amackow2', 'albertl3', 'ysharma5']
@@ -17,8 +18,8 @@ class TestInput(unittest.TestCase):
         self.assertEqual(mod_time_preferences, expected_time_preferences)
 
     def test_read_mod_max_sections(self):
-        mod_doodle_poll_csv_path = 'test_data/two_sections_one_mod/mod_preferences.csv'
-        mod_max_sections_csv_path = 'test_data/two_sections_one_mod/mod_max_sections.csv'
+        mod_doodle_poll_csv_path = TEST_DATA_PREFIX + 'two_sections_one_mod/mod_preferences.csv'
+        mod_max_sections_csv_path = TEST_DATA_PREFIX + 'two_sections_one_mod/mod_max_sections.csv'
         (mod_net_ids, _) = readDoodlePreferences(mod_doodle_poll_csv_path)
 
         # The max sections data is purposefully out of order to test that order doesn't matter
@@ -28,7 +29,7 @@ class TestInput(unittest.TestCase):
         self.assertEqual(max_sections_per_mod, expected_max_sections_per_mod)
 
     def test_read_student_doodle_poll(self):
-        student_doodle_poll_csv_path = 'test_data/basic_functionality/student_preferences.csv'
+        student_doodle_poll_csv_path = TEST_DATA_PREFIX + 'basic_functionality/student_preferences.csv'
         (net_ids, time_preferences) = readDoodlePreferences(student_doodle_poll_csv_path)
         
         expected_net_ids = ['a1', 'a2', 'a3', 'a4', 'a5', 'a6',
@@ -45,7 +46,7 @@ class TestInput(unittest.TestCase):
         self.assertEqual(time_preferences, expected_time_preferences)
 
     def test_read_mod_net_id_name_mapping(self):
-        mod_net_id_to_names_csv_path = 'test_data/different_num_rooms/mod_net_ids_to_names.csv'
+        mod_net_id_to_names_csv_path = TEST_DATA_PREFIX + 'different_num_rooms/mod_net_ids_to_names.csv'
         mod_net_id_name_mapping = readModNetIDToNameMapping(mod_net_id_to_names_csv_path, False)
 
         expected_mapping = {'amackow2':'Alex Mackowiak', 'ssolank2':'Shachi Solanki', 'arnavs3':'Arnav Sankaran',
@@ -53,7 +54,7 @@ class TestInput(unittest.TestCase):
         self.assertEqual(mod_net_id_name_mapping, expected_mapping)
 
     def test_read_section_times_info(self):
-        section_times_csv_path = 'test_data/different_num_rooms/section_times.csv'
+        section_times_csv_path = TEST_DATA_PREFIX + 'different_num_rooms/section_times.csv'
         (section_times, rooms_in_each_time)  = readSectionTimeInfo(section_times_csv_path)
 
         expected_times = ['(Time 1)', '(Time 2)', '(Time 3)']
