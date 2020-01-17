@@ -10,6 +10,7 @@ class TestAssignments(unittest.TestCase):
     def setUp(self):
         # Ensure that config options are correct for testing
         config.assign_exact_max_sections = False
+        config.allow_impossible_times = False
 
     def test_basic_functionality(self):
         """ Tests that the only possible assignments are made for a trivial case """

@@ -41,5 +41,5 @@ mod_net_id_error_check = True
 # Setting this to True may exponentially increase the amount of time taken to find an optimal solution
 # To alleviate this, only a percentage of the impossible times are allowed to be considered
 # This percentage may be configured by setting impossible_time_percentage to a different value
-allow_impossible_times = True
+allow_impossible_times = False
 impossible_time_percentage = 0.05
