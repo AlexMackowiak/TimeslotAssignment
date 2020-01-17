@@ -83,10 +83,21 @@ def assignModeratorsAndStudents(mod_doodle_poll_csv_path, mod_max_section_csv_pa
     solver = cp_model.CpSolver()
     solution_counter = SolutionCounter()
     status = solver.SolveWithSolutionCallback(model, solution_counter)
+
+    # Print and verify properties of the found solution
     print(solver.StatusName(status))
     print("Solutions considered:", solution_counter.solution_count)
     print("Objective value:", round(solver.ObjectiveValue(), 3))
-    assert (status == cp_model.OPTIMAL) # or (status == cp_model.FEASIBLE)
+
+    assert (status != cp_model.INFEASIBLE)
+    if config.only_allow_optimal_solutions:
+        if (status != cp_model.OPTIMAL):
+            print("Run with config.only_allow_optimal_solutions=False to allow terminating early")
+            assert (status == cp_model.OPTIMAL)
+    elif status == cp_model.FEASIBLE:
+        for _ in range(10):
+            print("WARNING: CPSolver terminated early, solution is not optimal")
+
     return extractModAndStudentAssignments(solver, mod_time_variables, student_time_variables)
 
 def printProblemInfo(mod_net_ids, student_net_ids, mod_time_preferences,

@@ -10,6 +10,7 @@ class TestImpossible(unittest.TestCase):
     def setUp(self):
         # Ensure that config options are correct for testing
         config.assign_exact_max_sections = False
+        config.only_allow_optimal_solutions = True
         config.allow_impossible_times = False
         config.impossible_time_percentage = 0.0
 

@@ -29,7 +29,7 @@ output_csv_path = 'sp19_final_assignments.csv'
 # When this is True, all moderators will be assigned to exactly their maximum amount of sections
 # This option is great for creating a good amount of sections with 5 students and reducing computation time
 # The downside however is that the program will fail to find a solution if not every mod can have their
-#  exact maximum amount of sections, so it will require manual fine tuning of the preferences file
+#  exact maximum amount of sections. This means you will have to manually fine tune the preferences file
 assign_exact_max_sections = True
 
 # When True, will do some simple error checking to see if every mod's net ID roughly corresponds to their name
@@ -43,3 +43,13 @@ mod_net_id_error_check = True
 # This percentage may be configured by setting impossible_time_percentage to a different value
 allow_impossible_times = False
 impossible_time_percentage = 0.05
+
+
+# When False, allows the constraint programming solver to be terminated early by sending SIGINT
+# Terminating the solver early will cause the rest of the program to use the most optimal assignment that
+#  has been found so far. This is very unlikely to be the actual optimal assignment so this option should
+#  only be used as a last resort when finding the actual optimal assignment will take inordinately long
+#  and all other measures listed in usage_instructions.txt have been attempted
+# Be very careful about using this with allow_impossible_times set to True as early section assignments
+#  will very likely contain times that are impossible for students or moderators
+only_allow_optimal_solutions=True
