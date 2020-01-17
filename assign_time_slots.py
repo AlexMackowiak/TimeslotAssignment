@@ -1,5 +1,6 @@
-import time
 import config
+import random
+import time
 from ortools.sat.python import cp_model
 from csv_input import readDoodlePreferences, readModMaxSectionPreferences, readSectionTimeInfo
 
@@ -12,22 +13,24 @@ MAX_STUDENTS_PER_SECTION = 6
 class PersonTimeVariableWrapper:
     """ Wrapper class around a CP variable that represents an assignment of a mod/student to a time """
 
-    def __init__(self, net_id, time_index, is_preferred_time, constraint_programming_var):
+    def __init__(self, net_id, time_index, is_preferred_time, is_impossible_time, constraint_programming_var):
         """
             Args:
                 net_id: String for the netID of the student or moderator this CP variable represents
                 time_index: Integer for the time slot this CP variable represents
                 is_preferred_time: True if this person marked this time as preferred
+                is_impossible_time: True if this person marked this time as impossible
                 constraint_programming_var: The OR-Tools IntVar object being wrapped with extra data
         """
         self.net_id = net_id
         self.time_index = time_index
         self.is_preferred_time = is_preferred_time
+        self.is_impossible_time = is_impossible_time
         self.variable = constraint_programming_var
 
     def isTimeAssignedToPerson(self, solver):
         """
-            The output of this function should only be used after the linear programming solver
+            The output of this function should only be used after the constraint programming solver
                 has been run
 
             Returns:
@@ -82,6 +85,7 @@ def assignModeratorsAndStudents(mod_doodle_poll_csv_path, mod_max_section_csv_pa
     status = solver.SolveWithSolutionCallback(model, solution_counter)
     print(solver.StatusName(status))
     print("Solutions considered:", solution_counter.solution_count)
+    print("Objective value:", round(solver.ObjectiveValue(), 3))
     assert (status == cp_model.OPTIMAL) # or (status == cp_model.FEASIBLE)
     return extractModAndStudentAssignments(solver, mod_time_variables, student_time_variables)
 
@@ -116,6 +120,7 @@ def setupConstraintProgrammingVariables(model, net_ids, time_preferences, is_mod
             net_ids: List of Strings for each person's net ID
             time_preferences: List where each entry is all the time preferences for one person
     """
+    random.seed("Creatively Titled Impossible Time Selection Seed") # Ensure deterministic behavior
     num_people = len(net_ids)
     num_section_times = len(time_preferences[0])
     person_time_variables = []
@@ -125,16 +130,19 @@ def setupConstraintProgrammingVariables(model, net_ids, time_preferences, is_mod
 
         for time_index in range(num_section_times):
             preference_for_time = time_preferences[person_index][time_index]
+            is_impossible_time = (preference_for_time == DOODLE_IMPOSSIBLE_TIME)
+            is_randomly_selected = (random.random() < config.impossible_time_percentage)
+            is_impossible_but_selected = (is_impossible_time and config.allow_impossible_times and is_randomly_selected)
 
-            if preference_for_time != DOODLE_IMPOSSIBLE_TIME:
+            if not is_impossible_time or is_impossible_but_selected:
+                # The time is either not impossible, or impossible times are allowed and it was randomly selected
                 is_preferred_time = (preference_for_time == DOODLE_PREFERRED_TIME)
                 cp_var_prefix = 'mod' if is_mod_data else 'student'
                 cp_var_name = (cp_var_prefix + str(person_index) + ':time_' + str(time_index))
 
                 constraint_programming_var = model.NewIntVar(0, 1, cp_var_name)
-                variable_wrapper = PersonTimeVariableWrapper(net_ids[person_index], time_index,
-                                                             is_preferred_time, constraint_programming_var)
-
+                variable_wrapper = PersonTimeVariableWrapper(net_ids[person_index], time_index, is_preferred_time,
+                                                             is_impossible_time, constraint_programming_var)
                 person_time_variables[person_index].append(variable_wrapper)
             else:
                 person_time_variables[person_index].append(None)
@@ -318,20 +326,41 @@ def addFunctionToMinimize(model, mod_time_variables, student_time_variables):
     num_section_times = len(mod_time_variables[0])
     not_preferred_variables = []
 
+    # Give impossible times an extremely high cost to discourage the use of these times
+    impossible_variables = []
+    IMPOSSIBLE_VARIABLE_PENALTY = 10000
+
+    # Minimize the sum of not preferred times
     for time_index in range(num_section_times):
         for mod_index in range(num_mods):
             mod_time_var_wrapper = mod_time_variables[mod_index][time_index]
-            if mod_time_var_wrapper is not None and not mod_time_var_wrapper.is_preferred_time:
-                coefficient = config.objective_function(num_mods, num_students, mod_index, True)
-                not_preferred_variables.append(coefficient * mod_time_var_wrapper.variable)
+            if mod_time_var_wrapper is not None:
+                if mod_time_var_wrapper.is_impossible_time:
+                    # Penalize the use of this impossible time heavily
+                    impossible_variables.append(IMPOSSIBLE_VARIABLE_PENALTY * mod_time_var_wrapper.variable)
+                elif not mod_time_var_wrapper.is_preferred_time:
+                    # Penalize this not preferred time so that preferred times are picked with higher priority
+                    coefficient = config.objective_function(num_mods, num_students, mod_index, True)
+                    not_preferred_variables.append(coefficient * mod_time_var_wrapper.variable)
+                else:
+                    # Do nothing on preferred times, they may be used freely at no cost
+                    pass
 
         for student_index in range(num_students):
             student_time_var_wrapper = student_time_variables[student_index][time_index]
-            if student_time_var_wrapper is not None and not student_time_var_wrapper.is_preferred_time:
-                coefficient = config.objective_function(num_mods, num_students, student_index, False)
-                not_preferred_variables.append(coefficient * student_time_var_wrapper.variable)
+            if student_time_var_wrapper is not None:
+                if student_time_var_wrapper.is_impossible_time:
+                    # Penalize the use of this impossible time heavily
+                    impossible_variables.append(IMPOSSIBLE_VARIABLE_PENALTY * student_time_var_wrapper.variable)
+                elif not student_time_var_wrapper.is_preferred_time:
+                    # Penalize this not preferred time so that preferred times are picked with higher priority
+                    coefficient = config.objective_function(num_mods, num_students, student_index, False)
+                    not_preferred_variables.append(coefficient * student_time_var_wrapper.variable)
+                else:
+                    # Do nothing on preferred times, they may be used freely at no cost
+                    pass
 
-    model.Minimize(sum(not_preferred_variables))
+    model.Minimize(sum(not_preferred_variables) + sum(impossible_variables))
 
 def extractModAndStudentAssignments(solver, mod_time_variables, student_time_variables):
     """
@@ -354,28 +383,54 @@ def extractModAndStudentAssignments(solver, mod_time_variables, student_time_var
     num_section_times = len(mod_time_variables[0])
     mods_assigned_to_times = []
     students_assigned_to_times = []
-    num_not_preferred_mod_times = 0
-    num_not_preferred_student_times = 0
+    not_preferred_mod_net_ids = []
+    impossible_mod_net_ids = []
+    not_preferred_student_net_ids = []
+    impossible_student_net_ids = []
 
     for time_index in range(num_section_times):
         mods_assigned_to_times.append([])
         for mod_index in range(num_mods):
             mod_time_var_wrapper = mod_time_variables[mod_index][time_index]
             if mod_time_var_wrapper is not None and mod_time_var_wrapper.isTimeAssignedToPerson(solver):
-                if not mod_time_var_wrapper.is_preferred_time:
-                    num_not_preferred_mod_times += 1
-                mods_assigned_to_times[time_index].append(mod_time_var_wrapper.net_id)
+                mod_net_id = mod_time_var_wrapper.net_id
+                mods_assigned_to_times[time_index].append(mod_net_id)
+
+                # Record if this moderator did not receive a preferred time
+                if mod_time_var_wrapper.is_impossible_time:
+                    impossible_mod_net_ids.append(mod_net_id)
+                elif not mod_time_var_wrapper.is_preferred_time:
+                    not_preferred_mod_net_ids.append(mod_net_id)
 
         students_assigned_to_times.append([])
         for student_index in range(num_students):
             student_time_var_wrapper = student_time_variables[student_index][time_index]
             if student_time_var_wrapper is not None and student_time_var_wrapper.isTimeAssignedToPerson(solver):
-                if not student_time_var_wrapper.is_preferred_time:
-                    num_not_preferred_student_times += 1
-                students_assigned_to_times[time_index].append(student_time_var_wrapper.net_id)
+                student_net_id = student_time_var_wrapper.net_id
+                students_assigned_to_times[time_index].append(student_net_id)
 
-    print('Mods assigned to not preferred time: ' + str(num_not_preferred_mod_times))
-    print('Students assigned to not preferred time: ' + str(num_not_preferred_student_times))
+                # Record if this student did not receive a preferred time
+                if student_time_var_wrapper.is_impossible_time:
+                    impossible_student_net_ids.append(student_net_id)
+                elif not student_time_var_wrapper.is_preferred_time:
+                    not_preferred_student_net_ids.append(student_net_id)
+
+    if len(impossible_mod_net_ids) > 0 or len(impossible_student_net_ids) > 0:
+        print('Mods assigned to impossible times:', len(impossible_mod_net_ids),
+              '(' + str(impossible_mod_net_ids) + ')')
+        print('Students assigned to impossible times:', len(impossible_student_net_ids),
+              '(' + str(impossible_student_net_ids) + ')')
+
+    # If there aren't too many to report, print out the students who received not preferred times
+    mod_message = 'Mods assigned to not preferred time: ' + str(len(not_preferred_mod_net_ids)) + ' '
+    student_message = 'Students assigned to not preferred time: ' + str(len(not_preferred_student_net_ids)) + ' '
+    if len(not_preferred_mod_net_ids) <= 10:
+        mod_message += str(not_preferred_mod_net_ids)
+    if len(not_preferred_student_net_ids) <= 10:
+        student_message += str(not_preferred_student_net_ids)
+
+    print(mod_message)
+    print(student_message)
     return mods_assigned_to_times, students_assigned_to_times
 
 def currentMillis():
@@ -393,5 +448,6 @@ class SolutionCounter(cp_model.CpSolverSolutionCallback):
         self.solution_count += 1
         millis_since_last_solution = (currentMillis() - self.millis_at_last_solution)
         seconds_since_last_solution = (millis_since_last_solution / 1000.0)
-        print('Solution found, time since last: ' + str(seconds_since_last_solution) + ' seconds')
+        obj_value = str(self.ObjectiveValue())
+        print('Solution found (obective=' + obj_value + '), time since last: ' + str(seconds_since_last_solution) + ' seconds')
         self.millis_at_last_solution = currentMillis()
