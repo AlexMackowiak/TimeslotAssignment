@@ -15,6 +15,8 @@ class TestImpossible(unittest.TestCase):
         config.prefer_contiguous_sections_all_possible = False
         config.allow_impossible_times = False
         config.impossible_time_percentage = 0.0
+        config.min_students_per_section = 5
+        config.max_students_per_section = 6
 
     def test_too_many_students_no_solution(self):
         """ Tests that no assignment can be made when one section would need to have 8 students """

@@ -10,10 +10,13 @@ class TestAssignments(unittest.TestCase):
     def setUp(self):
         # Ensure that config options are correct for testing
         config.assign_exact_max_sections = False
+        config.maximize_number_of_sections  = False
         config.only_allow_optimal_solutions = True
         config.prefer_contiguous_sections_preferred_times_only = False
         config.prefer_contiguous_sections_all_possible = False
         config.allow_impossible_times = False
+        config.min_students_per_section = 5
+        config.max_students_per_section = 6
 
     def test_basic_functionality(self):
         """ Tests that the only possible assignments are made for a trivial case """
@@ -105,6 +108,36 @@ class TestAssignments(unittest.TestCase):
         self.verify_assignments(test_data_dir, expected_mod_assignments, expected_student_assignments,
                                 non_standard_rooms=True)
 
+    def test_maximize_num_sections(self):
+        """ Tests that the total number of sections is maximized when the option is enabled """
+        test_data_dir = TEST_DATA_PREFIX + 'maximize_num_sections/'
+        config.maximize_number_of_sections = False
+
+        expected_mod_assignments = [['davidb2'],
+                                    ['snadeem2'],
+                                    ['pjg4'],
+                                    ['elainew2'],
+                                    ['bzinn2'],
+                                    []]
+        expected_student_assignments = [['a1', 'a2', 'a3', 'a4', 'a5', 'a6'],
+                                        ['b1', 'b2', 'b3', 'b4', 'b5', 'b6'],
+                                        ['c1', 'c2', 'c3', 'c4', 'c5', 'c6'],
+                                        ['d1', 'd2', 'd3', 'd4', 'd5', 'd6'],
+                                        ['e1', 'e2', 'e3', 'e4', 'e5', 'e6'],
+                                        []]
+        self.verify_assignments(test_data_dir, expected_mod_assignments, expected_student_assignments)
+
+        # Verify that not preferred times will be picked to maxmize the number of sections
+        config.maximize_number_of_sections = True
+        expected_mod_assignments[5] = ['bzinn2']
+        expected_student_assignments = [['a1', 'a2', 'a3', 'a4', 'a5'],
+                                        ['b1', 'b2', 'b3', 'b4', 'b5'],
+                                        ['c1', 'c2', 'c3', 'c4', 'c5'],
+                                        ['d1', 'd2', 'd3', 'd4', 'd5'],
+                                        ['e1', 'e2', 'e3', 'e4', 'e5'],
+                                        ['a6', 'b6', 'c6', 'd6', 'e6']]
+        self.verify_assignments(test_data_dir, expected_mod_assignments, expected_student_assignments)
+
     def verify_assignments(self, test_data_dir, expected_mod_assignments, expected_student_assignments,
                            non_standard_rooms=False):
         # Set up paths to CSV files for this test
@@ -117,6 +150,8 @@ class TestAssignments(unittest.TestCase):
         csv_files = (mod_doodle_poll_csv_path, mod_max_sections_csv_path,
                      student_doodle_poll_csv_path, section_times_csv_path)
         (mods_assigned_to_times, students_assigned_to_times) = assignModeratorsAndStudents(*csv_files)
+        self.assertEqual(len(mods_assigned_to_times), len(expected_mod_assignments))
+        self.assertEqual(len(students_assigned_to_times), len(expected_student_assignments))
 
         # No guarantee on the order returned within the time index of the assignment
         for time_index in range(len(mods_assigned_to_times)):
