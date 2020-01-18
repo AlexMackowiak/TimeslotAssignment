@@ -341,6 +341,9 @@ def addFunctionToMinimize(model, mod_time_variables, student_time_variables):
     impossible_variables = []
     IMPOSSIBLE_VARIABLE_PENALTY = 10000
 
+    # Give not preferred times a multiplier to make them have a higher priority than contiguous sections
+    NOT_PREFERRED_PRIORITY_MULTIPLIER = 10
+
     # Minimize the sum of not preferred times
     for time_index in range(num_section_times):
         for mod_index in range(num_mods):
@@ -352,6 +355,7 @@ def addFunctionToMinimize(model, mod_time_variables, student_time_variables):
                 elif not mod_time_var_wrapper.is_preferred_time:
                     # Penalize this not preferred time so that preferred times are picked with higher priority
                     coefficient = config.objective_function(num_mods, num_students, mod_index, True)
+                    coefficient *= NOT_PREFERRED_PRIORITY_MULTIPLIER
                     not_preferred_variables.append(coefficient * mod_time_var_wrapper.variable)
                 else:
                     # Do nothing on preferred times, they may be used freely at no cost
@@ -366,12 +370,83 @@ def addFunctionToMinimize(model, mod_time_variables, student_time_variables):
                 elif not student_time_var_wrapper.is_preferred_time:
                     # Penalize this not preferred time so that preferred times are picked with higher priority
                     coefficient = config.objective_function(num_mods, num_students, student_index, False)
+                    coefficient *= NOT_PREFERRED_PRIORITY_MULTIPLIER
                     not_preferred_variables.append(coefficient * student_time_var_wrapper.variable)
                 else:
                     # Do nothing on preferred times, they may be used freely at no cost
                     pass
 
-    model.Minimize(sum(not_preferred_variables) + sum(impossible_variables))
+    # Maximize the amount of contiguous section times when the option is enabled
+    # If the option is not enabled this will be an empty list
+    contiguous_section_variables = []
+    should_consider_contiguous_sections = config.prefer_contiguous_sections_preferred_times_only or \
+                                          config.prefer_contiguous_sections_all_possible
+    if should_consider_contiguous_sections:
+        contiguous_section_variables = create_contiguous_section_decision_variables(model, mod_time_variables)
+
+    model.Minimize(sum(not_preferred_variables) + sum(impossible_variables) - sum(contiguous_section_variables) +
+                   len(contiguous_section_variables))
+
+def create_contiguous_section_decision_variables(model, mod_time_variables):
+    """
+        Creates and returns the decision variables for assigning moderators to teach contiguous sections,
+         according to the specified values in the config file. These decision variables should then be used
+         in an objective function for the system such that assigning contiguous sections is more optimal.
+
+        Args:
+            model: The CpModel object that represents the constraints of the problem
+            mod_time_variables: 2D List of PersonTimeVariableWrapper, if [mod_index][time_index]
+                                    is None then that time is impossible for that mod
+
+        Returns:
+            A List of CpModel.IntVar such that each variable is assigned value 1 iff a moderator is
+                assigned to teach both the adjacent sections that the variable represents
+    """
+    random.seed("Creatively Titled Contiguous Time Selection Seed") # Ensure deterministic behavior
+    contiguous_section_variables = []
+    num_contiguous_variables = 0
+    num_mods = len(mod_time_variables)
+    num_section_times = len(mod_time_variables[0])
+
+    for mod_index in range(num_mods):
+        for section_index in range(num_section_times - 1):
+            current_mod_time_var_wrapper = mod_time_variables[mod_index][section_index]
+            next_mod_time_var_wrapper = mod_time_variables[mod_index][section_index + 1]
+
+            # Determine if the current and next times are contiguous given the specification in the config file
+            times_are_contiguous = current_mod_time_var_wrapper is not None
+            times_are_contiguous = times_are_contiguous and next_mod_time_var_wrapper is not None
+            if config.prefer_contiguous_sections_all_possible:
+                times_are_contiguous = times_are_contiguous and not current_mod_time_var_wrapper.is_impossible_time
+                times_are_contiguous = times_are_contiguous and not next_mod_time_var_wrapper.is_impossible_time
+            elif config.prefer_contiguous_sections_preferred_times_only:
+                times_are_contiguous = times_are_contiguous and current_mod_time_var_wrapper.is_preferred_time
+                times_are_contiguous = times_are_contiguous and next_mod_time_var_wrapper.is_preferred_time
+
+            # Don't consider these contiguous times if random chance has selected to not use this time
+            times_are_contiguous &= (random.random() < config.contiguous_sections_percentage)
+
+            if times_are_contiguous:
+                # We have two adjacent times that are not preferred, need to prioritize assigning these
+                left_section_value = current_mod_time_var_wrapper.variable
+                right_section_value = next_mod_time_var_wrapper.variable
+                # Create a new variable to represent the sum of assigning the moderator to these two sections
+                unique_variable_name = 'contiguous_var_' + str(num_contiguous_variables)
+                left_and_right_section_sum = model.NewIntVar(0, 2, unique_variable_name)
+                model.Add(left_and_right_section_sum == left_section_value + right_section_value)
+
+                # Create a decision variable to represent that the moderator was assigned these contiguous sections
+                # contiguous_decision_variable = (left_and_right_section_sum // 2)
+                unique_variable_name = 'contiguous_var_' + str(num_contiguous_variables + 1)
+                contiguous_decision_variable = model.NewIntVar(0, 1, unique_variable_name)
+                model.AddDivisionEquality(contiguous_decision_variable, left_and_right_section_sum, 2)
+
+                # Factor this decision variable into the objective function to make using it more optimal than not
+                contiguous_section_variables.append(contiguous_decision_variable)
+                num_contiguous_variables += 2
+
+    print('Num contiguous variables:', num_contiguous_variables)
+    return contiguous_section_variables
 
 def extractModAndStudentAssignments(solver, mod_time_variables, student_time_variables):
     """

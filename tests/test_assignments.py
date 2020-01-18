@@ -11,6 +11,8 @@ class TestAssignments(unittest.TestCase):
         # Ensure that config options are correct for testing
         config.assign_exact_max_sections = False
         config.only_allow_optimal_solutions = True
+        config.prefer_contiguous_sections_preferred_times_only = False
+        config.prefer_contiguous_sections_all_possible = False
         config.allow_impossible_times = False
 
     def test_basic_functionality(self):
