@@ -25,6 +25,11 @@ section_times_csv_path = 'sp19_full_data/sp19_section_times.csv'
 # The file path for where to write the final section assignment output CSV
 output_csv_path = 'sp19_final_assignments.csv'
 
+# These two values should be pretty self explanatory
+# They are the minimum and maximum number of students that can be assigned to a section
+min_students_per_section = 5
+max_students_per_section = 6
+
 
 # When this is True, all moderators will be assigned to exactly their maximum amount of sections
 # This option is great for creating a good amount of sections with 5 students and reducing computation time
