@@ -78,7 +78,7 @@ def assignModeratorsAndStudents(mod_doodle_poll_csv_path, mod_max_section_csv_pa
     addMaxSectionsPerSectionTimeConstraint(model, mod_time_variables, max_sections_per_time)
     addSectionsPerStudentConstraint(model, student_time_variables)
     addStudentsPerSectionTimeConstraint(model, mod_time_variables, student_time_variables, max_sections_per_time)
-    addFunctionToMinimize(model, mod_time_variables, student_time_variables)
+    addFunctionToMinimize(model, mod_time_variables, student_time_variables, sum(max_sections_per_mod))
 
     # Kick off the solver, and verify an optimal solution exists
     solver = cp_model.CpSolver()

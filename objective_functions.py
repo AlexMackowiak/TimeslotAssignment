@@ -24,7 +24,7 @@ def first_come_first_serve_mods_high_priority(num_mods, num_students, index, is_
     return num_students - index
 
 # Below is the code that actually makes use of the objective functions defined above
-def addFunctionToMinimize(model, mod_time_variables, student_time_variables):
+def addFunctionToMinimize(model, mod_time_variables, student_time_variables, max_total_sections):
     """
         Adds the objective function to minimize to the model
         The objective function that gets added is specified in the config file.
@@ -36,6 +36,8 @@ def addFunctionToMinimize(model, mod_time_variables, student_time_variables):
             student_time_variables: 2D List of PersonTimeVariableWrapper,
                                         if [student_index][time_index] is None then
                                         that time is impossible for that student
+            max_total_sections: Integer for the maximum number of sections possible if every
+                                 moderator is assigned to their maximum number of sections
     """
     num_mods = len(mod_time_variables)
     num_students = len(student_time_variables)
@@ -48,6 +50,9 @@ def addFunctionToMinimize(model, mod_time_variables, student_time_variables):
 
     # Give not preferred times a multiplier to make them have a higher priority than contiguous sections
     NOT_PREFERRED_PRIORITY_MULTIPLIER = 10
+
+    # Give making more sections a high enough priority to outweigh shifting students around
+    MAX_SECTIONS_PRIORITY_MULTIPLIER = (config.max_students_per_section + 1) * NOT_PREFERRED_PRIORITY_MULTIPLIER
 
     # Minimize the sum of not preferred times
     for time_index in range(num_section_times):
@@ -89,8 +94,28 @@ def addFunctionToMinimize(model, mod_time_variables, student_time_variables):
     if should_consider_contiguous_sections:
         contiguous_section_variables = create_contiguous_section_decision_variables(model, mod_time_variables)
 
+    # Maximize the amount of sections created when the option is enabled
+    # If the option is not enabled this will be an empty list
+    mod_time_variables_to_maximize = []
+    maximum_total_sections_objective_offset = 0
+    if config.maximize_number_of_sections and config.assign_exact_max_sections:
+        print('WARNING: config.assign_exact_max_sections must be disabled to use config.maximize_number_of_sections')
+        print('WARNING: If these are both enabled it would add add extraneous computation time')
+    elif config.maximize_number_of_sections:
+        # Only config.maximize_number_of_sections is enabled, factor that into the objective function
+        # Ensure objective function has minimum possible value of 0
+        maximum_total_sections_objective_offset = MAX_SECTIONS_PRIORITY_MULTIPLIER * max_total_sections
+        # Maximize the number of sections by adding negative weight to each moderator assignment that exists
+        for mod_index in range(num_mods):
+            for time_index in range(num_section_times):
+                mod_time_var_wrapper = mod_time_variables[mod_index][time_index]
+                if mod_time_var_wrapper is not None:
+                    mod_time_variables_to_maximize.append(MAX_SECTIONS_PRIORITY_MULTIPLIER * mod_time_var_wrapper.variable)
+
+    # Finally, minimize all of the above things
     model.Minimize(sum(not_preferred_variables) + sum(impossible_variables) - sum(contiguous_section_variables) +
-                   len(contiguous_section_variables))
+                   len(contiguous_section_variables) - sum(mod_time_variables_to_maximize) +
+                   maximum_total_sections_objective_offset)
 
 def create_contiguous_section_decision_variables(model, mod_time_variables):
     """

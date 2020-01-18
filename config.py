@@ -35,7 +35,15 @@ max_students_per_section = 6
 # This option is great for creating a good amount of sections with 5 students and reducing computation time
 # The downside however is that the program will fail to find a solution if not every mod can have their
 #  exact maximum amount of sections. This means you will have to manually fine tune the preferences file
-assign_exact_max_sections = True
+assign_exact_max_sections = False
+
+# When True, this option is the automatic version of assign_exact_max_sections above. It will attempt to maximize the
+#  number of sections created, and therefore tend to leave spots open in existing sections. The only downside to using
+#  this is that it may add quite a bit of extra computation to the objective function over the manual version.
+#  If this extra compution appears to require exponential time, it is best to use the manual version instead.
+# assign_exact_max_sections and maximize_number_of_sections cannot both be True at the same time, if they are both set
+#  to True, a warning will be logged and assign_exact_max_sections will take precedence
+maximize_number_of_sections = True
 
 # When True, will do some simple error checking to see if every mod's net ID roughly corresponds to their name
 mod_net_id_error_check = True
