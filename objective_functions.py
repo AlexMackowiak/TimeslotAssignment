@@ -1,4 +1,5 @@
 import config
+import random
 # You really should use a first come first serve objective function (try not to lie to students)
 
 # Simplest function for calculation speed, inadvisable to use this however from a moderator perspective

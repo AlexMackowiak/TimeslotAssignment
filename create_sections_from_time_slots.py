@@ -30,7 +30,7 @@ def assignSectionsFromSectionTimes(mods_assigned_to_times, students_assigned_to_
     (_, rooms_in_each_time) = readSectionTimeInfo(config.section_times_csv_path)
 
     sections_in_each_time = []
-    num_sections_with_five = 0
+    num_sections_with_min = 0
     for time_index in range(len(mods_assigned_to_times)):
         mods_in_time = mods_assigned_to_times[time_index]
         students_in_time = students_assigned_to_times[time_index]
@@ -66,10 +66,10 @@ def assignSectionsFromSectionTimes(mods_assigned_to_times, students_assigned_to_
         print('Time', time_index)
         for section in sections_in_time:
             print(section.mod_net_id + ':', section.student_net_ids, 'room:', section.room)
-            if len(section.student_net_ids) == 5:
-                num_sections_with_five += 1
+            if len(section.student_net_ids) == config.min_students_per_section:
+                num_sections_with_min += 1
 
         sections_in_each_time.append(sections_in_time)
 
-    print('Number of sections with 5 students:', num_sections_with_five)
+    print('Number of sections with', config.min_students_per_section, 'students:', num_sections_with_min)
     return sections_in_each_time
