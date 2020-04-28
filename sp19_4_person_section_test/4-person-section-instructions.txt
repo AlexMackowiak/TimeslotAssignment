@@ -1,0 +1,19 @@
+4 students, 1 hour sections:
+
+Approach 1:
+In order to double the number of time slots from 2 hour Doodle results:
+1. Double every student preference value by copying it to the left
+2. Double every mod preference value by copying it to the left
+3. Add 1 to every mod max section value
+4. Double the number of section time room entries
+5. Change min in section to 3 and max in section to 4
+
+The above approach however runs significant risk of being computationally infeasible
+
+Approach 2 without doubling time slots:
+1. Add 1 to every mod max section value
+2. Allow 2 mods per 2-hour section (Double the number of rooms in the time constraint)
+3. Set min in section to 3 and max in section to 4
+
+Having tried both, approach 2 tends to be way more computationally feasible
+-Alex
