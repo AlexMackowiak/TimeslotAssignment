@@ -6,14 +6,14 @@ from collections import OrderedDict
 DOODLE_RESPONSE_START_LINE = 6
 DOODLE_RESPONSE_END_LINE = -3
 DOODLE_IMPOSSIBLE_TIME = ''
-MINIMUM_REQUIRED_TIMES = 7
+MINIMUM_REQUIRED_TIMES = 5
 
 def printUsage():
     print('This program takes one mandatory argument: the Doodle poll preference .csv which is to be processed\n' +\
           'A second, optional, argument can be given for a .csv file that maps from names to NetIDs when people can\'t read')
 
 # All the student netIDs that don't follow standard conventions should go here
-strange_net_ids = {'gsoares'}
+strange_net_ids = {'gsoares', 'lucianat', 'richwell', 'ankithad'}
 
 """
 This script writes to a new file after doing the following 4 things:
@@ -45,6 +45,10 @@ if __name__ == "__main__":
     with open(preference_csv_path, 'r', encoding='utf-8-sig') as pref_file:
         pref_csv_contents = list(csv.reader(pref_file))
         # Trim useless beginning and ending CSV stuff
+
+        if pref_csv_contents[-1][0] != 'Comments':
+            # Format adds two extra lines if there are comments
+            DOODLE_RESPONSE_END_LINE = -1
         pref_csv_contents = pref_csv_contents[DOODLE_RESPONSE_START_LINE:
                                               DOODLE_RESPONSE_END_LINE]
         num_names_fixed = 0
@@ -62,7 +66,8 @@ if __name__ == "__main__":
                 num_names_fixed += 1
 
             # Make sure it actually looks somewhat like a netID
-            if ((not netID[0].isalpha()) or (not netID[-1].isdigit())) and (netID not in strange_net_ids):
+            if ((not netID[0].isalpha()) or (not netID[-1].isdigit()) or (len(netID) > 10)) and\
+                (netID not in strange_net_ids):
                 print(netID + ' does not look like a NetID, skipping')
                 continue
 
@@ -72,16 +77,22 @@ if __name__ == "__main__":
 
             if netID in latest_entries:
                 num_duplicates_removed += 1
-                del latest_entries[netID] # New entries are moved to the bottom
+                #del latest_entries[netID] # Move new entries to the bottom
             latest_entries[netID] = entry
 
     # Find students who didn't give us enough times
+    students_with_too_few_times = []
     for netID in latest_entries:
         preferences = latest_entries[netID][1:]
         num_times_given = len(preferences) - preferences.count(DOODLE_IMPOSSIBLE_TIME)
 
         if num_times_given < MINIMUM_REQUIRED_TIMES:
-            print(netID + ': ' + str(num_times_given) + ' times')
+            students_with_too_few_times.append((netID, num_times_given))
+
+    import operator
+    students_with_too_few_times.sort(key=operator.itemgetter(1), reverse=True)
+    for (netID, num_times_given) in students_with_too_few_times:
+        print(netID + ': ' + str(num_times_given) + ' times')
 
     # Rewrite file contents with only most recent preferences
     dot_index = preference_csv_path.find('.')

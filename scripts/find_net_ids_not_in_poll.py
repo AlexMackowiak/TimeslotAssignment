@@ -28,6 +28,12 @@ if __name__ == '__main__':
             students_in_class.add(net_id)
 
     # Compare the two to find discrepencies
+    print("Students in roster not in poll:")
     for student_in_class in students_in_class:
         if student_in_class not in students_who_filled_out_poll:
             print(student_in_class)
+
+    print("Students in poll not in roster:")
+    for student_in_poll in students_who_filled_out_poll:
+        if student_in_poll not in students_in_class:
+            print(student_in_poll)

@@ -3,17 +3,16 @@ import smtplib
 from getpass import getpass, GetPassWarning
 
 # Need a mapping of moderator net IDs to actual names
-mod_net_id_to_name_csv_path = 'sp19_mod_net_ids_to_names.csv'
+mod_net_id_to_name_csv_path = 'sp20_full_data/sp20_mod_net_ids_to_names.csv'
 mod_name_to_net_id_dict = {}
 with open(mod_net_id_to_name_csv_path, 'r') as mapping_file:
     for entry in csv.reader(mapping_file):
         net_id = entry[0]
         name = entry[1]
-
         mod_name_to_net_id_dict[name] = net_id
 
 # Get the password for the admin email address
-from_address = 'cs126sp19@gmail.com'
+from_address = 'cs126sp20@gmail.com'
 password = None
 if password is None:
     try:
@@ -30,7 +29,7 @@ server.starttls()
 server.login(from_address, password)
 
 # Email students one at a time from the previously generated section assignment csv
-with open('sp19_assignments_for_real.csv', 'r') as student_assignment_file:
+with open('sp20_full_data/final_section_assignments_sp20.csv', 'r') as student_assignment_file:
     assignments = csv.reader(student_assignment_file)
     for assignment in assignments:
         net_id = assignment[0]
@@ -44,7 +43,7 @@ with open('sp19_assignments_for_real.csv', 'r') as student_assignment_file:
         mod_address = mod_net_id + '@illinois.edu'
         message = "\r\n".join(["From: " + from_address,
                                "To: " + student_address,
-                               "Subject: Code Review Section Assignment",
+                               "Subject: CS 126 Code Review Assignment",
                                "",
                                "Hello,",
                                "",
