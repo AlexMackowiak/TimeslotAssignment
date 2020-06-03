@@ -87,7 +87,7 @@ def assignModeratorsAndStudents(mod_doodle_poll_csv_path, mod_max_section_csv_pa
 
     # Print and verify properties of the found solution
     print(solver.StatusName(status))
-    print("Solutions considered:", solution_counter.solution_count)
+    print("Num solutions considered:", solution_counter.solution_count)
     print("Objective value:", round(solver.ObjectiveValue(), 3))
 
     assert (status != cp_model.INFEASIBLE)
@@ -248,5 +248,5 @@ class SolutionCounter(cp_model.CpSolverSolutionCallback):
         millis_since_last_solution = (currentMillis() - self.millis_at_last_solution)
         seconds_since_last_solution = (millis_since_last_solution / 1000.0)
         obj_value = str(self.ObjectiveValue())
-        print('Solution found (obective=' + obj_value + '), time since last: ' + str(seconds_since_last_solution) + ' seconds')
+        print('Viable assignment found (obective=' + obj_value + '), time since last: ' + str(seconds_since_last_solution) + ' seconds')
         self.millis_at_last_solution = currentMillis()

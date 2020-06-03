@@ -2,7 +2,7 @@ import objective_functions # Need to specify objective function in config
 objective_function = objective_functions.everyone_equal_weight
 
 # The locations of the mod and student preference CSV files
-semester_data_directory = 'test_data/real_data/sp20_data/'
+semester_data_directory = 'test_data/real_data/fa19_data/'
 
 # Moderator Doodle poll responses CSV
 mod_doodle_poll_csv_path = semester_data_directory + 'mod_preferences.csv'
@@ -15,15 +15,15 @@ student_doodle_poll_csv_path = semester_data_directory + 'student_preferences.cs
 
 
 # The file path to a CSV with [mod net ID],[mod name] format
-mod_net_id_to_name_csv_path = 'sp20_full_data/sp20_mod_net_ids_to_names.csv'
+mod_net_id_to_name_csv_path = 'test_data/real_data/fa19_data/mod_net_ids_to_names.csv'
 
 # The file path to a CSV with format [section time],[(room 1 name:max sections)],...,[(room N name:max sections)]
 # For example: "Wednesday 10 AM - 12 PM,(Siebel 1112:2),(Siebel 1314:1),(Siebel 4102:1)"
 # These times MUST be the exact same and in the exact same order as the mod and student Doodle polls
-section_times_csv_path = 'sp20_full_data/sp20_section_times.csv'
+section_times_csv_path = 'test_data/real_data/fa19_data/section_times.csv'
 
 # The file path for where to write the final section assignment output CSV
-output_csv_path = 'sp20_final_assignments.csv'
+output_csv_path = 'fa19_final_assignments.csv'
 
 # These two values should be pretty self explanatory
 # They are the minimum and maximum number of students that can be assigned to a section
@@ -43,7 +43,7 @@ assign_exact_max_sections = False
 #  If this extra compution appears to require exponential time, it is best to use the manual version instead.
 # assign_exact_max_sections and maximize_number_of_sections cannot both be True at the same time, if they are both set
 #  to True, a warning will be logged and assign_exact_max_sections will take precedence
-maximize_number_of_sections = True
+maximize_number_of_sections = False
 
 # When True, will do some simple error checking to see if every mod's net ID roughly corresponds to their name
 mod_net_id_error_check = True
