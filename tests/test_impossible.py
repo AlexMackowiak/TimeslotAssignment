@@ -13,6 +13,7 @@ class TestImpossible(unittest.TestCase):
         config.only_allow_optimal_solutions = True
         config.prefer_contiguous_sections_preferred_times_only = False
         config.prefer_contiguous_sections_all_possible = False
+        config.num_sections_to_greedy_preselect = 0
         config.allow_impossible_times = False
         config.impossible_time_percentage = 0.0
         config.min_students_per_section = 5

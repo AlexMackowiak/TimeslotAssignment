@@ -4,6 +4,7 @@ import time
 from csv_input import readDoodlePreferences, readModMaxSectionPreferences, readSectionTimeInfo
 from constraints import addMaxSectionsPerModConstraint, addMaxSectionsPerSectionTimeConstraint,\
                         addSectionsPerStudentConstraint, addStudentsPerSectionTimeConstraint
+from greedy_preselect import greedyPreselectSections
 from objective_functions import addFunctionToMinimize
 from ortools.sat.python import cp_model
 
@@ -55,25 +56,14 @@ def assignModeratorsAndStudents(mod_doodle_poll_csv_path, mod_max_section_csv_pa
             students_assigned_to_times: List of List of Strings, each entry is all net IDs of the moderators assigned
                                         to that time index
     """
-    (mod_net_ids, mod_time_preferences) = readDoodlePreferences(mod_doodle_poll_csv_path)
-    max_sections_per_mod = readModMaxSectionPreferences(mod_max_section_csv_path, mod_net_ids)
-    (student_net_ids, student_time_preferences) = readDoodlePreferences(student_doodle_poll_csv_path)
-    assert len(mod_time_preferences[0]) == len(student_time_preferences[0])
+    # Read in all of the input files and get the constraint programming model
+    (model, mod_time_variables, student_time_variables,
+     max_sections_per_mod, max_sections_per_time) = getModelFromInputFiles(**locals())
 
-    model = cp_model.CpModel()
-    mod_time_variables = setupConstraintProgrammingVariables(model, mod_net_ids,
-                                                             mod_time_preferences, True)
-    student_time_variables = setupConstraintProgrammingVariables(model, student_net_ids,
-                                                                 student_time_preferences, False)
-
-    num_section_times = len(mod_time_variables[0])
-    max_sections_per_time = [3] * num_section_times
-    if section_times_csv_path != None:
-        (_, rooms_in_each_time) = readSectionTimeInfo(section_times_csv_path)
-        max_sections_per_time = [sum(room_at_time.max_sections for room_at_time in rooms_in_each_time[time_index])
-                                 for time_index in range(num_section_times)]
-
-    printProblemInfo(mod_net_ids, student_net_ids, mod_time_preferences, student_time_variables, mod_time_variables)
+    # Attempt to greedy preselect some sections if specified in config and then add CP constraints
+    num_greedy_sections = greedyPreselectSections(model, mod_time_variables, student_time_variables,
+                                                  max_sections_per_time, max_sections_per_mod)
+    print(f"Greedy selected {num_greedy_sections} sections")
     addMaxSectionsPerModConstraint(model, mod_time_variables, max_sections_per_mod)
     addMaxSectionsPerSectionTimeConstraint(model, mod_time_variables, max_sections_per_time)
     addSectionsPerStudentConstraint(model, student_time_variables)
@@ -100,6 +90,30 @@ def assignModeratorsAndStudents(mod_doodle_poll_csv_path, mod_max_section_csv_pa
             print("WARNING: CPSolver terminated early, solution is not optimal")
 
     return extractModAndStudentAssignments(solver, mod_time_variables, student_time_variables)
+
+def getModelFromInputFiles(mod_doodle_poll_csv_path, mod_max_section_csv_path, student_doodle_poll_csv_path,
+                           section_times_csv_path):
+    (mod_net_ids, mod_time_preferences) = readDoodlePreferences(mod_doodle_poll_csv_path)
+    max_sections_per_mod = readModMaxSectionPreferences(mod_max_section_csv_path, mod_net_ids)
+    (student_net_ids, student_time_preferences) = readDoodlePreferences(student_doodle_poll_csv_path)
+    assert len(mod_time_preferences[0]) == len(student_time_preferences[0])
+
+    # Set up the constraint programming model for each student/moderator at the times that work for them
+    model = cp_model.CpModel()
+    mod_time_variables = setupConstraintProgrammingVariables(model, mod_net_ids,
+                                                             mod_time_preferences, True)
+    student_time_variables = setupConstraintProgrammingVariables(model, student_net_ids,
+                                                                 student_time_preferences, False)
+    num_section_times = len(mod_time_variables[0])
+    max_sections_per_time = [3] * num_section_times
+    if section_times_csv_path != None:
+        (_, rooms_in_each_time) = readSectionTimeInfo(section_times_csv_path)
+        max_sections_per_time = [sum(room_at_time.max_sections for room_at_time in rooms_in_each_time[time_index])
+                                 for time_index in range(num_section_times)]
+
+    printProblemInfo(mod_net_ids, student_net_ids, mod_time_preferences, student_time_variables, mod_time_variables)
+    return (model, mod_time_variables, student_time_variables, max_sections_per_mod, max_sections_per_time)
+
 
 def printProblemInfo(mod_net_ids, student_net_ids, mod_time_preferences,
                      student_time_variables, mod_time_variables):
@@ -132,7 +146,7 @@ def setupConstraintProgrammingVariables(model, net_ids, time_preferences, is_mod
             net_ids: List of Strings for each person's net ID
             time_preferences: List where each entry is all the time preferences for one person
     """
-    random.seed("Creatively Titled Impossible Time Selection Seed") # Ensure deterministic behavior
+    random.seed('Creatively Titled Impossible Time Selection Seed') # Ensure deterministic behavior
     num_people = len(net_ids)
     num_section_times = len(time_preferences[0])
     person_time_variables = []
@@ -248,5 +262,5 @@ class SolutionCounter(cp_model.CpSolverSolutionCallback):
         millis_since_last_solution = (currentMillis() - self.millis_at_last_solution)
         seconds_since_last_solution = (millis_since_last_solution / 1000.0)
         obj_value = str(self.ObjectiveValue())
-        print('Viable assignment found (obective=' + obj_value + '), time since last: ' + str(seconds_since_last_solution) + ' seconds')
+        print(f'Viable assignment found (objective={obj_value}), time since last: {str(seconds_since_last_solution)} seconds')
         self.millis_at_last_solution = currentMillis()

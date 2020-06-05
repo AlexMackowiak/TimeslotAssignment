@@ -10,10 +10,11 @@ class TestAssignments(unittest.TestCase):
     def setUp(self):
         # Ensure that config options are correct for testing
         config.assign_exact_max_sections = False
-        config.maximize_number_of_sections  = False
+        config.maximize_number_of_sections = False
         config.only_allow_optimal_solutions = True
         config.prefer_contiguous_sections_preferred_times_only = False
         config.prefer_contiguous_sections_all_possible = False
+        config.num_sections_to_greedy_preselect = 0
         config.allow_impossible_times = False
         config.min_students_per_section = 5
         config.max_students_per_section = 6
@@ -160,14 +161,6 @@ class TestAssignments(unittest.TestCase):
             expected_mods_in_time = expected_mod_assignments[time_index]
             expected_students_in_time = expected_student_assignments[time_index]
 
-            # Verify the mods in each time are expected
-            self.assertEqual(len(actual_mods_in_time), len(expected_mods_in_time))
-            for mod_assigned_to_time in actual_mods_in_time:
-                self.assertIn(mod_assigned_to_time, expected_mods_in_time)
-
-            # Verify the students in each time are expected
-            self.assertEqual(len(actual_students_in_time), len(expected_students_in_time))
-            for student_assigned_to_time in actual_students_in_time:
-                self.assertIn(student_assigned_to_time, expected_students_in_time)
-
-
+            # Verify the count of each element is the same between the actual and expected data
+            self.assertCountEqual(actual_mods_in_time, expected_mods_in_time)
+            self.assertCountEqual(actual_students_in_time, expected_students_in_time)
