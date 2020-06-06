@@ -93,6 +93,27 @@ def assignModeratorsAndStudents(mod_doodle_poll_csv_path, mod_max_section_csv_pa
 
 def getModelFromInputFiles(mod_doodle_poll_csv_path, mod_max_section_csv_path, student_doodle_poll_csv_path,
                            section_times_csv_path):
+    """
+        Reads in the .csv files to create all PersonTimeVariable objects needed in the CP solver
+
+        Args:
+            mod_doodle_poll_csv_path: The file path to the Doodle poll for the moderators in .csv format
+            mod_max_section_csv_path: The file path to the max sections .csv file
+            student_doodle_poll_csv_path: The file path to the Doodle poll for the students in .csv format
+            section_times_csv_path: The file path to the .csv file containing info on section times and rooms
+                                    available for each time. If None, 3 rooms per time is assumed
+
+        Returns:
+            model: The CpModel object that represents the constraints of the problem
+            mod_time_variables: 2D List of PersonTimeVariableWrapper, if [mod_index][time_index]
+                                    is None then that time is impossible for that mod
+            student_time_variables: 2D List of PersonTimeVariableWrapper,
+                                        if [student_index][time_index] is None then
+                                        that time is impossible for that student
+            max_sections_per_time: List of Integer where each index represents the number of rooms
+                                    available at that time index
+            max_sections_per_mod: List of Integer, each entry is the max sections for that mod_index
+    """
     (mod_net_ids, mod_time_preferences) = readDoodlePreferences(mod_doodle_poll_csv_path)
     max_sections_per_mod = readModMaxSectionPreferences(mod_max_section_csv_path, mod_net_ids)
     (student_net_ids, student_time_preferences) = readDoodlePreferences(student_doodle_poll_csv_path)
@@ -113,7 +134,6 @@ def getModelFromInputFiles(mod_doodle_poll_csv_path, mod_max_section_csv_path, s
 
     printProblemInfo(mod_net_ids, student_net_ids, mod_time_preferences, student_time_variables, mod_time_variables)
     return (model, mod_time_variables, student_time_variables, max_sections_per_mod, max_sections_per_time)
-
 
 def printProblemInfo(mod_net_ids, student_net_ids, mod_time_preferences,
                      student_time_variables, mod_time_variables):
@@ -145,6 +165,9 @@ def setupConstraintProgrammingVariables(model, net_ids, time_preferences, is_mod
             model: The CpModel object that represents the constraints of the problem
             net_ids: List of Strings for each person's net ID
             time_preferences: List where each entry is all the time preferences for one person
+
+        Returns:
+            2D List of PersonTimeVariableWrapper
     """
     random.seed('Creatively Titled Impossible Time Selection Seed') # Ensure deterministic behavior
     num_people = len(net_ids)
@@ -250,7 +273,7 @@ def currentMillis():
     return int(round(time.time() * 1000))
 
 class SolutionCounter(cp_model.CpSolverSolutionCallback):
-    """ Simple callback class to count the number of solutions considered """
+    """ Simple callback class to count the number of solutions considered and report progress """
 
     def __init__(self):
         cp_model.CpSolverSolutionCallback.__init__(self)

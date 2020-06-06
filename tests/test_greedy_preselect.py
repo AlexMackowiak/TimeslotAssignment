@@ -18,6 +18,7 @@ class TestGreedyPreselect(unittest.TestCase):
         config.prefer_contiguous_sections_all_possible = False
         config.num_sections_to_greedy_preselect = 0
         config.allow_impossible_times = False
+        config.impossible_time_percentage = 0.0
         config.min_students_per_section = 5
         config.max_students_per_section = 6
 
@@ -121,6 +122,12 @@ class TestGreedyPreselect(unittest.TestCase):
         expected_assignment = {0 : {'eyw3' : ['a1', 'a2', 'a3', 'a4']},
                                1 : {'davidb2' : ['b1', 'b2', 'b3', 'b4']}}
         self.verify_greedy_assignment(test_data_dir, expected_assignment)
+
+    def test_impossible_times_not_considered(self):
+        """ Tests that greedy assignment does not consider impossible times even when generally allowed """
+        config.allow_impossible_times = False
+        config.impossible_time_percentage = 1.0
+        self.test_most_constraining_picked()
 
     def test_complex_assignment(self):
         """ Tests that a valid greedy assignment exists on complicated data """

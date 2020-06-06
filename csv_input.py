@@ -111,7 +111,6 @@ def readModNetIDToNameMapping(mod_net_id_to_name_csv_path, mod_net_id_error_chec
 
     return mod_net_id_to_name_dict
 
-
 class RoomAtTime:
     def __init__(self, name, max_sections):
         self.name = name

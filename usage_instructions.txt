@@ -44,5 +44,6 @@ Doctoring the data:
     just in a more direct way. The chosen objective function should ideally enforce first come first serve on students after the first N, but this
 	may not be computationally feasible.
 
+If data doctoring did not work to have sub-exponential computation times, consider trying the num_sections_to_greedy_preselect config option.
 Alternatively, using a simplified objective function can vastly decrease computation times.
 SP19 used data doctoring with N = 100 and the "everyone_equal_weight" objective function to finish in ~15 seconds.
