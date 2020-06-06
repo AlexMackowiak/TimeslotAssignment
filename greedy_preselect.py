@@ -1,20 +1,22 @@
+from collections import defaultdict
 import config
 from math import inf
 UNUSABLE_VALUE = inf
 
-def getMostConstrainingIndices(most_constraining_time_index, person_time_variables, max_sections_per_person, num_indices_to_get):
+def getMostConstrainingIndices(most_constraining_time_index, person_time_variables, max_sections_per_person,
+                               num_indices_to_get, assigned_times):
     num_people = len(person_time_variables)
     num_section_times = len(person_time_variables[0])
 
     # Get the number of valid times for each unassigned person and return the most constraining people
-    # Problem: Want to count yellow times but only take green people
     num_times_per_person = [sum(1
                                 if (person_time_variables[i][j] is not None)
                                 else 0
                                 for j in range(num_section_times)
                                )
                             if (person_time_variables[i][most_constraining_time_index] is not None) and
-                               (max_sections_per_person[i] > 0)
+                               (max_sections_per_person[i] > 0) and
+                               (most_constraining_time_index not in assigned_times[i])
                             else UNUSABLE_VALUE
                             for i in range(num_people)]
     constraining_indices_sorted = sorted(range(num_people), key=lambda i: num_times_per_person[i])
@@ -67,6 +69,7 @@ def getGreedyAssignment(mod_time_variables, student_time_variables, max_sections
     max_sections_per_student = [1] * num_students
     max_sections_per_mod = max_sections_per_mod.copy() # Can't modify outside this function
     max_sections_per_time = max_sections_per_time.copy() # Can't modify outside this function
+    mod_assigned_times = defaultdict(set)
     # Keep track of how many students put green for each time slot and decrement as we greedy assign them
     num_students_with_each_time = [sum(1
                                        if (student_time_variables[i][j] is not None) and
@@ -103,7 +106,10 @@ def getGreedyAssignment(mod_time_variables, student_time_variables, max_sections
                 mod_var_for_time = mod_time_variables[mod_index][most_constraining_time_index]
                 mod_has_time_green = (mod_var_for_time is not None) and (mod_var_for_time.is_preferred_time)
                 mod_has_been_fully_assigned = (max_sections_per_mod[mod_index] <= 0)
-                if mod_has_time_green and not mod_has_been_fully_assigned:
+                mod_previously_assigned_to_time = (most_constraining_time_index in mod_assigned_times[mod_index])
+
+                if mod_has_time_green and (not mod_has_been_fully_assigned) and \
+                    (not mod_previously_assigned_to_time):
                     valid_greedy_section_time_found = True
                     break
 
@@ -115,14 +121,16 @@ def getGreedyAssignment(mod_time_variables, student_time_variables, max_sections
         # Pick the first {config.min_students_per_section} who gave the fewest valid time preferences
         # Likewise pick the first moderator who works with the time and gave the fewest valid time preferences
         greedy_student_indices = getMostConstrainingIndices(most_constraining_time_index, student_time_variables,
-                                                            max_sections_per_student, config.min_students_per_section)
+                                                            max_sections_per_student, config.min_students_per_section,
+                                                            defaultdict(set))
         greedy_mod_index = getMostConstrainingIndices(most_constraining_time_index, mod_time_variables,
-                                                      max_sections_per_mod, 1)[0]
+                                                      max_sections_per_mod, 1, mod_assigned_times)[0]
 
         # Add this greedy section to the greedy assignment and account for the mod and students having been assigned
         greedy_assignment.append((most_constraining_time_index, greedy_mod_index, greedy_student_indices))
         max_sections_per_time[most_constraining_time_index] -= 1
         max_sections_per_mod[greedy_mod_index] -= 1
+        mod_assigned_times[greedy_mod_index].add(most_constraining_time_index)
 
         for greedy_student_index in greedy_student_indices:
             max_sections_per_student[greedy_student_index] -= 1

@@ -1,0 +1,17 @@
+a1,OK,,,
+a2,OK,,,
+a3,OK,,,
+a4,OK,,,
+a5,OK,,,
+b1,,OK,,OK
+b2,,OK,OK,OK
+b3,,OK,OK,OK
+b4,,OK,,OK
+b5,,OK,,OK
+c1,,OK,OK,
+c2,,,OK,OK
+c3,,OK,OK,
+c4,,,OK,OK
+c5,,OK,OK,
+d1,OK,OK,OK,OK
+d2,OK,OK,,OK
