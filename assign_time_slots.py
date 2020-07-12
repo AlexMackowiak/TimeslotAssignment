@@ -15,19 +15,22 @@ DOODLE_IMPOSSIBLE_TIME = ''
 class PersonTimeVariableWrapper:
     """ Wrapper class around a CP variable that represents an assignment of a mod/student to a time """
 
-    def __init__(self, net_id, time_index, is_preferred_time, is_impossible_time, constraint_programming_var):
+    def __init__(self, net_id, time_index, is_preferred_time, is_impossible_time, day_of_week,
+                 constraint_programming_var):
         """
             Args:
                 net_id: String for the netID of the student or moderator this CP variable represents
                 time_index: Integer for the time slot this CP variable represents
                 is_preferred_time: True if this person marked this time as preferred
                 is_impossible_time: True if this person marked this time as impossible
+                day_of_week: String for the weekday associated with this variable's time or None
                 constraint_programming_var: The OR-Tools IntVar object being wrapped with extra data
         """
         self.net_id = net_id
         self.time_index = time_index
         self.is_preferred_time = is_preferred_time
         self.is_impossible_time = is_impossible_time
+        self.day_of_week = day_of_week
         self.variable = constraint_programming_var
 
     def isTimeAssignedToPerson(self, solver):
@@ -114,23 +117,27 @@ def getModelFromInputFiles(mod_doodle_poll_csv_path, mod_max_section_csv_path, s
                                     available at that time index
             max_sections_per_mod: List of Integer, each entry is the max sections for that mod_index
     """
+    # Read in all the student and mod time preferences from doodle poll info
     (mod_net_ids, mod_time_preferences) = readDoodlePreferences(mod_doodle_poll_csv_path)
     max_sections_per_mod = readModMaxSectionPreferences(mod_max_section_csv_path, mod_net_ids)
     (student_net_ids, student_time_preferences) = readDoodlePreferences(student_doodle_poll_csv_path)
     assert len(mod_time_preferences[0]) == len(student_time_preferences[0])
 
-    # Set up the constraint programming model for each student/moderator at the times that work for them
-    model = cp_model.CpModel()
-    mod_time_variables = setupConstraintProgrammingVariables(model, mod_net_ids,
-                                                             mod_time_preferences, True)
-    student_time_variables = setupConstraintProgrammingVariables(model, student_net_ids,
-                                                                 student_time_preferences, False)
-    num_section_times = len(mod_time_variables[0])
+    # Read in the section times to know what rooms can be used when
+    num_section_times = len(mod_time_preferences[0])
+    section_times = None
     max_sections_per_time = [3] * num_section_times
     if section_times_csv_path != None:
-        (_, rooms_in_each_time) = readSectionTimeInfo(section_times_csv_path)
+        (section_times, rooms_in_each_time) = readSectionTimeInfo(section_times_csv_path)
         max_sections_per_time = [sum(room_at_time.max_sections for room_at_time in rooms_in_each_time[time_index])
                                  for time_index in range(num_section_times)]
+
+    # Set up the constraint programming model for each student/moderator at the times that work for them
+    model = cp_model.CpModel()
+    mod_time_variables = setupConstraintProgrammingVariables(model, mod_net_ids, mod_time_preferences,
+                                                             section_times, is_mod_data=True)
+    student_time_variables = setupConstraintProgrammingVariables(model, student_net_ids, student_time_preferences,
+                                                                 section_times, is_mod_data=False)
 
     printProblemInfo(mod_net_ids, student_net_ids, mod_time_preferences, student_time_variables, mod_time_variables)
     return (model, mod_time_variables, student_time_variables, max_sections_per_mod, max_sections_per_time)
@@ -157,7 +164,7 @@ def printProblemInfo(mod_net_ids, student_net_ids, mod_time_preferences,
     print('Num section times:', num_section_times)
     print('Num person/time variables:', var_count)
 
-def setupConstraintProgrammingVariables(model, net_ids, time_preferences, is_mod_data):
+def setupConstraintProgrammingVariables(model, net_ids, time_preferences, section_times, is_mod_data=True):
     """
         Creates the constraint programming variables for the model of the moderator/student assignment problem
 
@@ -165,6 +172,9 @@ def setupConstraintProgrammingVariables(model, net_ids, time_preferences, is_mod
             model: The CpModel object that represents the constraints of the problem
             net_ids: List of Strings for each person's net ID
             time_preferences: List where each entry is all the time preferences for one person
+            section_times: List like ['Wednesday 10 AM - 12 PM', 'Thursday 2 PM - 4 PM', ...] or None if no section
+                            time data was provided
+            is_mod_data: True if we are setting up constraint variables for the moderators, False if students
 
         Returns:
             2D List of PersonTimeVariableWrapper
@@ -173,6 +183,13 @@ def setupConstraintProgrammingVariables(model, net_ids, time_preferences, is_mod
     num_people = len(net_ids)
     num_section_times = len(time_preferences[0])
     person_time_variables = []
+
+    # Set up day of the week information based on 'Wednesday 10 AM - 12 PM' format
+    if section_times is None:
+        section_time_weekdays = [None] * num_section_times
+    else:
+        assert len(section_times) == num_section_times
+        section_time_weekdays = [section_time[:section_time.find(' ')] for section_time in section_times]
 
     for person_index in range(num_people):
         person_time_variables.append([])
@@ -188,10 +205,11 @@ def setupConstraintProgrammingVariables(model, net_ids, time_preferences, is_mod
                 is_preferred_time = (preference_for_time == DOODLE_PREFERRED_TIME)
                 cp_var_prefix = 'mod' if is_mod_data else 'student'
                 cp_var_name = (cp_var_prefix + str(person_index) + ':time_' + str(time_index))
+                day_of_week = section_time_weekdays[time_index]
 
                 constraint_programming_var = model.NewIntVar(0, 1, cp_var_name)
                 variable_wrapper = PersonTimeVariableWrapper(net_ids[person_index], time_index, is_preferred_time,
-                                                             is_impossible_time, constraint_programming_var)
+                                                             is_impossible_time, day_of_week, constraint_programming_var)
                 person_time_variables[person_index].append(variable_wrapper)
             else:
                 person_time_variables[person_index].append(None)

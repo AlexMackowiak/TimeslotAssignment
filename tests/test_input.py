@@ -57,7 +57,7 @@ class TestInput(unittest.TestCase):
         section_times_csv_path = TEST_DATA_PREFIX + 'different_num_rooms/section_times.csv'
         (section_times, rooms_in_each_time)  = readSectionTimeInfo(section_times_csv_path)
 
-        expected_times = ['(Time 1)', '(Time 2)', '(Time 3)']
+        expected_times = ['Wednesday 10 AM - 12 PM', 'Thursday 12 PM - 2 PM', 'Friday 2 PM - 4 PM']
         expected_rooms = [[RoomAtTime('Room 1', 2), RoomAtTime('Room 2', 2), RoomAtTime('Room 3', 1)],
                           [RoomAtTime('Room 1', 2)],
                           [RoomAtTime('Room 3', 1)]]

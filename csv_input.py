@@ -1,5 +1,7 @@
 import csv
 
+WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
 def readDoodlePreferences(doodle_poll_csv_path):
     """
         Reads in the time preferences for every person from a preprocessed Doodle poll .csv file
@@ -144,8 +146,16 @@ def readSectionTimeInfo(section_time_csv_path):
 
     with open(section_time_csv_path, 'r', encoding='utf-8-sig') as section_time_file:
         for entry in csv.reader(section_time_file):
+            if entry[0][0] == '#':
+                # Line is a comment
+                continue
+
+            # Verify that section time line starts with a day of the week and has rooms
             assert (len(entry) >= 2)
-            section_times.append(entry[0])
+            room_time = entry[0]
+            space_index = room_time.find(' ')
+            assert room_time[:space_index] in WEEKDAYS
+            section_times.append(room_time)
 
             rooms_in_this_time = []
             for room_entry in entry[1:]:

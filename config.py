@@ -63,8 +63,8 @@ prefer_contiguous_sections_all_possible = False
 # Finally, since adding a large number of variables to the system can lead to exponential time behaviours, setting
 #  contiguous_sections_percentage to a value lower than 1.0 will cause a fraction of the existing contiguous sections
 #  to not be considered. This will therefore not contribute those variables to the system. For example, a value of
-#  0.25 will cause only 1/4 contiguous sections to be considered. Setting this value lower than 1.0 is not recommended
-#  unless necessary to avoid exponential runtimes
+#  0.25 will cause only 1/4 contiguous sections to be considered. Setting this value lower than 1.0 may be necessary
+#  to avoid exponential runtimes
 contiguous_sections_percentage = 1.0
 
 # While predicting exactly what will or will not lead to exponential runtimes is difficult, runtime is clearly very
